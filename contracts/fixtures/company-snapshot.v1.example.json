@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "v1", "snapshotId": "fixture-snapshot-001", "collectedAt": "2026-10-02T12:00:00Z",
+  "company": { "name": "示例股份有限公司", "stockCode": "000001", "market": "A_SHARE", "industry": "示例行业" },
+  "financialSeries": [{ "id": "revenue", "label": "营业收入", "unit": "CNY", "points": [{ "period": "2025FY", "value": 120000000, "evidenceIds": ["evidence-financial-1"], "dataQuality": { "verificationStatus": "verified", "conflictStatus": "resolved", "scoreEligible": true, "resolutionReason": "采用官方披露" } }] }],
+  "events": [{ "id": "event-social-1", "category": "reputation", "claimKind": "opinion", "occurredAt": "2026-09-30T00:00:00Z", "title": "测试用口碑观察", "summary": "社区观点，仅供辅助观察。", "evidenceIds": ["evidence-social-1"], "dataQuality": { "verificationStatus": "verified", "conflictStatus": "not_applicable", "scoreEligible": false } }],
+  "observations": [{ "id": "observation-llm-1", "category": "news", "claimKind": "fact", "statement": "待验证的 LLM 辅助提取结果。", "stance": "unknown", "evidenceIds": ["evidence-llm-1"], "dataQuality": { "verificationStatus": "unverified", "conflictStatus": "not_applicable", "scoreEligible": false, "resolutionReason": "LLM 提取尚未验证" } }],
+  "evidence": [
+    { "id": "evidence-financial-1", "category": "financial_statement", "claimKind": "fact", "sourceName": "虚构官方接口", "sourceUrl": "https://example.com/official", "retrievedAt": "2026-10-02T12:00:00Z", "title": "测试用财务披露", "provenance": { "sourceType": "official_api", "accessMethod": "structured_api", "adapterId": "fixture-official-api", "reliabilityTier": "official" }, "extraction": { "method": "structured_api", "verificationStatus": "verified" } },
+    { "id": "evidence-social-1", "category": "reputation", "claimKind": "opinion", "sourceName": "虚构社交平台", "sourceUrl": "https://example.com/social", "retrievedAt": "2026-10-02T12:00:00Z", "title": "测试用社区观点", "provenance": { "sourceType": "social_platform", "accessMethod": "html_parser", "adapterId": "fixture-social", "reliabilityTier": "community" }, "extraction": { "method": "html_parser", "verificationStatus": "verified" } },
+    { "id": "evidence-llm-1", "category": "news", "claimKind": "fact", "sourceName": "虚构新闻页", "sourceUrl": "https://example.com/news", "retrievedAt": "2026-10-02T12:00:00Z", "title": "测试用待验证新闻", "provenance": { "sourceType": "web_page", "accessMethod": "llm_assisted", "adapterId": "fixture-llm-extractor", "reliabilityTier": "third_party" }, "extraction": { "method": "llm_assisted", "extractionConfidence": 0.62, "verificationStatus": "unverified" } }
+  ],
+  "coverage": [{ "dimension": "financial_health", "status": "complete", "retrievedAt": "2026-10-02T12:00:00Z", "sourceNames": ["虚构官方接口"] }, { "dimension": "debt_credit", "status": "unavailable", "reason": "测试用来源超时", "retrievedAt": "2026-10-02T12:00:00Z", "sourceNames": [] }],
+  "collectionErrors": [{ "code": "source_timeout", "message": "测试用单一来源超时", "sourceId": "fixture-judicial", "dimension": "debt_credit", "retryable": true }],
+  "normalizationDecisions": [{ "fieldKey": "revenue.2025FY", "status": "adopted", "evidenceIds": ["evidence-financial-1"], "reason": "官方来源优先" }]
+}

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes.local/contracts/source-fetch-result.v1.schema.json",
+  "title": "SourceFetchResult v1",
+  "x-contract-status": "frozen",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "adapter", "query", "records", "failures", "completedAt"],
+  "properties": {
+    "schemaVersion": { "const": "v1" },
+    "adapter": { "$ref": "#/$defs/adapter" },
+    "query": { "$ref": "#/$defs/query" },
+    "records": { "type": "array", "items": { "$ref": "#/$defs/record" } },
+    "failures": { "type": "array", "items": { "$ref": "#/$defs/failure" } },
+    "completedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "category": { "type": "string", "enum": ["company_profile", "financial_statement", "exchange_announcement", "judicial_or_administrative", "news", "reputation"] },
+    "adapter": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "sourceType", "accessMethod", "supportedCategories"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "name": { "type": "string" },
+        "sourceType": { "$ref": "#/$defs/sourceType" },
+        "accessMethod": { "$ref": "#/$defs/accessMethod" },
+        "supportedCategories": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/category" } },
+        "version": { "type": "string" },
+        "limitations": { "type": "string" }
+      }
+    },
+    "query": {
+      "type": "object", "additionalProperties": false,
+      "required": ["requestId", "company", "categories"],
+      "properties": {
+        "requestId": { "type": "string" },
+        "company": { "$ref": "#/$defs/company" },
+        "categories": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/category" } },
+        "timeRange": { "$ref": "#/$defs/timeRange" }
+      }
+    },
+    "company": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "stockCode", "market"],
+      "properties": { "name": { "type": "string" }, "stockCode": { "type": "string", "pattern": "^\\d{6}$" }, "market": { "const": "A_SHARE" } }
+    },
+    "record": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "category", "claimKind", "content", "provenance", "extraction"],
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "$ref": "#/$defs/category" },
+        "claimKind": { "type": "string", "enum": ["fact", "opinion"] },
+        "content": { "$ref": "#/$defs/content" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "extraction": { "$ref": "#/$defs/extraction" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "provenance": { "properties": { "sourceType": { "const": "social_platform" } }, "required": ["sourceType"] } }, "required": ["provenance"] },
+          "then": { "properties": { "claimKind": { "const": "opinion" }, "provenance": { "properties": { "reliabilityTier": { "const": "community" } }, "required": ["reliabilityTier"] } } }
+        }
+      ]
+    },
+    "content": {
+      "type": "object", "additionalProperties": false, "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["structured", "text", "table"] },
+        "text": { "type": "string", "maxLength": 20000 },
+        "structured": { "type": "object", "additionalProperties": true },
+        "rawRef": { "type": "string", "description": "Internal SQLite/file reference; never a public API field" }
+      }
+    },
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sourceName", "sourceType", "accessMethod", "adapterId", "reliabilityTier", "sourceUrl", "retrievedAt"],
+      "properties": {
+        "sourceName": { "type": "string" }, "sourceType": { "$ref": "#/$defs/sourceType" }, "accessMethod": { "$ref": "#/$defs/accessMethod" },
+        "adapterId": { "type": "string" }, "reliabilityTier": { "type": "string", "enum": ["official", "third_party", "community"] },
+        "sourceUrl": { "type": "string", "format": "uri" }, "retrievedAt": { "type": "string", "format": "date-time" }, "publishedAt": { "type": "string", "format": "date-time" }, "contentHash": { "type": "string" }
+      }
+    },
+    "extraction": {
+      "type": "object", "additionalProperties": false, "required": ["method", "verificationStatus"],
+      "properties": {
+        "method": { "$ref": "#/$defs/accessMethod" },
+        "extractionConfidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "verificationStatus": { "type": "string", "enum": ["verified", "unverified", "rejected"] }
+      },
+      "allOf": [{ "if": { "properties": { "method": { "const": "llm_assisted" } }, "required": ["method"] }, "then": { "required": ["extractionConfidence"] } }]
+    },
+    "sourceType": { "type": "string", "enum": ["official_api", "official_web", "open_data", "web_page", "social_platform"] },
+    "accessMethod": { "type": "string", "enum": ["structured_api", "html_parser", "open_source_tool", "llm_assisted", "manual_import"] },
+    "timeRange": { "type": "object", "additionalProperties": false, "properties": { "start": { "type": "string", "format": "date-time" }, "end": { "type": "string", "format": "date-time" } } },
+    "failure": {
+      "type": "object", "additionalProperties": false, "required": ["code", "message", "retryable"],
+      "properties": { "code": { "type": "string", "enum": ["unsupported_company", "source_unavailable", "source_timeout", "rate_limited", "invalid_response", "access_denied"] }, "message": { "type": "string" }, "category": { "$ref": "#/$defs/category" }, "retryable": { "type": "boolean" } }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "v1",
+  "adapter": { "id": "fixture-official-api", "name": "虚构官方接口", "sourceType": "official_api", "accessMethod": "structured_api", "supportedCategories": ["financial_statement"] },
+  "query": { "requestId": "fixture-request-001", "company": { "name": "示例股份有限公司", "stockCode": "000001", "market": "A_SHARE" }, "categories": ["financial_statement", "reputation", "news"] },
+  "records": [
+    { "id": "record-financial-1", "category": "financial_statement", "claimKind": "fact", "content": { "kind": "structured", "structured": { "period": "2025FY", "revenue": 120000000 } }, "provenance": { "sourceName": "虚构官方接口", "sourceType": "official_api", "accessMethod": "structured_api", "adapterId": "fixture-official-api", "reliabilityTier": "official", "sourceUrl": "https://example.com/official", "retrievedAt": "2026-10-02T12:00:00Z" }, "extraction": { "method": "structured_api", "verificationStatus": "verified" } },
+    { "id": "record-social-1", "category": "reputation", "claimKind": "opinion", "content": { "kind": "text", "text": "这是测试用公开口碑观点。" }, "provenance": { "sourceName": "虚构社交平台", "sourceType": "social_platform", "accessMethod": "html_parser", "adapterId": "fixture-social", "reliabilityTier": "community", "sourceUrl": "https://example.com/social", "retrievedAt": "2026-10-02T12:00:00Z" }, "extraction": { "method": "html_parser", "verificationStatus": "verified" } },
+    { "id": "record-llm-1", "category": "news", "claimKind": "fact", "content": { "kind": "text", "text": "测试用待验证网页摘录。" }, "provenance": { "sourceName": "虚构新闻页", "sourceType": "web_page", "accessMethod": "llm_assisted", "adapterId": "fixture-llm-extractor", "reliabilityTier": "third_party", "sourceUrl": "https://example.com/news", "retrievedAt": "2026-10-02T12:00:00Z" }, "extraction": { "method": "llm_assisted", "extractionConfidence": 0.62, "verificationStatus": "unverified" } }
+  ],
+  "failures": [{ "code": "source_timeout", "message": "测试用单一来源超时", "category": "judicial_or_administrative", "retryable": true }],
+  "completedAt": "2026-10-02T12:00:00Z"
+}

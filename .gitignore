@@ -1,0 +1,34 @@
+# Local machine and secrets
+AGENT.local.md
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node.js
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Runtime data and logs
+data/*
+!data/.gitkeep
+*.log
+
+# Local reference material; project-specific rules are in AGENTS.md and .agents/
+Workflow/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
