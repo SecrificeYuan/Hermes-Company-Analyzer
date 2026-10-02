@@ -11,7 +11,7 @@ export function NetworkSection({ xray }: { xray: CompanyXRay }) {
   const nodes = [...xray.graph.nodes].filter((n) => n.type !== 'company').sort((a, b) => b.risk - a.risk)
   return (
     <div className="space-y-6">
-      <RelationGraph graph={xray.graph} height={360} />
+      <RelationGraph graph={xray.graph} centerLabel={xray.name} height={360} />
       <div>
         <h4 className="mb-2 font-mono text-[11px] tracking-widest text-slate-500">风险节点（按风险值排序）</h4>
         <DetailTable
