@@ -93,10 +93,10 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-7xl px-6 py-8">
+    <main className={`mx-auto max-w-7xl px-6 py-8 ${mode === 'lite' ? 'flex h-[calc(100vh-2.25rem)] flex-col overflow-hidden' : 'min-h-screen'}`}>
       {/* 顶栏（仅 LITE；PRO 的操作已并入概要头右侧操作列） */}
       {mode === 'lite' && (
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex shrink-0 items-center justify-between">
         <Button asChild variant="ghost" size="sm">
           <Link href="/"><ArrowLeft /> 重新扫描</Link>
         </Button>
@@ -115,11 +115,11 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
           <MetaStrip xray={displayXray} />
         </motion.div>
       ) : (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)]">
-          <motion.div variants={rise} custom={0} initial="hidden" animate="show" className="min-w-0">
+        <div className="grid min-h-0 flex-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)] lg:grid-rows-[minmax(0,1fr)]">
+          <motion.div variants={rise} custom={0} initial="hidden" animate="show" className="min-h-0 min-w-0 lg:overflow-y-auto">
             <CharacterCard xray={displayXray} />
           </motion.div>
-          <div className="min-w-0 space-y-4">
+          <div className="min-h-0 min-w-0 space-y-4 overflow-y-auto pr-1">
             {order.map((id, i) => {
               const k = LITE_SECTION_KEY[id]
               return k ? (
@@ -201,7 +201,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
       </div>
       )}
 
-      <footer className="mt-10 text-center font-mono text-[11px] text-slate-600">
+      <footer className={`mt-10 text-center font-mono text-[11px] text-slate-600 ${mode === 'lite' ? 'shrink-0' : ''}`}>
         HERMES · 所有结论均可点开证据溯源 · 数据仅供演示，不构成投资建议
       </footer>
 
