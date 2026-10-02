@@ -13,7 +13,7 @@
 // 第一层：数据源引擎输出
 // ============================================================
 
-export type DataSourceName = 'eastmoney_financial' | 'eastmoney_announcements' | 'eastmoney_pledge' | 'eastmoney_holders' | 'akshare' | 'cninfo' | 'juhe' | 'gdelt' | 'mock'
+export type DataSourceName = 'eastmoney_financial' | 'eastmoney_announcements' | 'eastmoney_pledge' | 'eastmoney_holders' | 'akshare' | 'cninfo' | 'juhe' | 'gdelt' | 'public_web' | 'mock'
 
 export interface DataSourceStatus {
   name: DataSourceName

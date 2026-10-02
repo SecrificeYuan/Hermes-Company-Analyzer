@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import { XrayClient } from '@/components/xray/XrayClient'
 import { getXRay } from '@/lib/get-xray'
 import { CompanyNotFoundError } from '@/lib/data/fetcher'
+import { findCompany, getCompanyHealth } from '@/lib/data/company-health'
+import { healthToXray } from '@/lib/data/health-xray'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,12 +13,18 @@ export const dynamic = 'force-dynamic'
  */
 export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  let xray
-  try {
-    xray = await getXRay(id)
-  } catch (e) {
-    if (e instanceof CompanyNotFoundError) notFound()
-    throw e
+  // Keep the established X-ray report as the primary company presentation.
+  // The health report remains available for discovered, unlisted companies.
+  if (/^\d{6}$/.test(id)) {
+    try {
+      return <XrayClient xray={await getXRay(id)} />
+    } catch (error) {
+      if (error instanceof CompanyNotFoundError) notFound()
+      throw error
+    }
   }
-  return <XrayClient xray={xray} />
+  const company = await findCompany(id)
+  if (!company) notFound()
+  const health = await getCompanyHealth(company)
+  return <XrayClient xray={healthToXray(health)} health={health} />
 }

@@ -3,6 +3,7 @@ import { CashFlowChart } from '../CashFlowChart'
 import { DetailTable } from './DataTable'
 import { formatWan } from '@/lib/utils'
 import type { CompanyXRay, FinancialYear } from '@/lib/types'
+import type { CompanyHealth } from '@/lib/company'
 
 /** 万元/亿 格式化：营收净利现金流用 formatWan，比率直接 % */
 function pct(v: number | undefined, digits = 1): string {
@@ -18,16 +19,16 @@ function yoy(years: FinancialYear[], i: number, key: 'revenue' | 'netProfit'): s
   return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
 }
 
-export function FinancialSection({ xray }: { xray: CompanyXRay }) {
+export function FinancialSection({ xray, health }: { xray: CompanyXRay; health?: CompanyHealth }) {
   const years = xray.detail?.financialYears ?? []
   const ordered = [...years].reverse() // 近年在前
   return (
     <div className="space-y-6">
       <CashFlowChart hp={xray.hp} height={280} />
       <div className="grid gap-4 sm:grid-cols-3">
-        <Metric label="资产负债率" value={pct(xray.hp.debtRatio)} />
-        <Metric label="最新经营现金流" value={formatWan(xray.hp.cashFlow)} />
-        <Metric label="健康度 HP" value={`${xray.hp.score} / 100`} />
+        <Metric label="资产负债率" value={health ? pct(health.metrics.debtRatio ?? undefined) : pct(xray.hp.debtRatio)} />
+        <Metric label="最新经营现金流" value={health && health.metrics.operatingCashFlow === null ? '—' : formatWan(xray.hp.cashFlow)} />
+        <Metric label={health ? '财务健康风险' : '健康度 HP'} value={health ? health.financialRisk === 'low' ? '较低' : health.financialRisk === 'medium' ? '中等' : health.financialRisk === 'high' ? '较高' : '资料不足' : `${xray.hp.score} / 100`} />
       </div>
       <DetailTable
         rows={ordered}

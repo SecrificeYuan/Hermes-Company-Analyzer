@@ -10,6 +10,8 @@ import { useTencentQuote } from '@/lib/hooks/use-tencent-quote'
 import { useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
+import type { CompanyHealth } from '@/lib/company'
+import { listingLabels } from '@/lib/company'
 
 const RISK_META = {
   green: { label: '低风险 · GREEN', Icon: ShieldCheck, badge: 'safe' as const },
@@ -18,19 +20,19 @@ const RISK_META = {
 }
 
 /** PRO 元信息条：工商 key-value + 评级 + 健康度环 + 诊断摘要（规格 §3.2） */
-export function MetaStrip({ xray }: { xray: CompanyXRay }) {
+export function MetaStrip({ xray, health }: { xray: CompanyXRay; health?: CompanyHealth }) {
   const meta = RISK_META[xray.overallRisk]
   const t = useTokens()
   const terms = getTerms('pro')
   const color = t.riskColor[xray.overallRisk]
   const r = xray.registry
-  const quote = useTencentQuote(xray.stockCode)
+  const quote = useTencentQuote(health ? undefined : xray.stockCode)
   const quoteColor = quote && quote.change > 0 ? t.colors.danger : quote && quote.change < 0 ? t.colors.safe : t.colors.textDim
 
   const kv: { k: string; v: string }[] = [
-    ...(r ? [{ k: terms.metaStrip.creditCode, v: r.creditCode }] : []),
+    ...(r ? [{ k: terms.metaStrip.creditCode, v: r.creditCode }] : health?.company.creditCode ? [{ k: '信用代码线索', v: health.company.creditCode }] : []),
     { k: '所属行业', v: xray.industry },
-    ...(r ? [{ k: terms.metaStrip.foundedAt, v: r.foundedAt }] : []),
+    ...(r ? [{ k: terms.metaStrip.foundedAt, v: r.foundedAt }] : health?.company.foundedAt ? [{ k: terms.metaStrip.foundedAt, v: health.company.foundedAt }] : []),
     ...(r ? [{ k: terms.metaStrip.registeredCapital, v: formatWan(r.registeredCapital) }] : []),
     { k: terms.metaStrip.asOf, v: xray.asOf.replace('T', ' ').slice(0, 16) },
   ]
@@ -40,18 +42,18 @@ export function MetaStrip({ xray }: { xray: CompanyXRay }) {
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       className="glass-card p-6"
-      style={{ borderColor: `${color}66` }}
+      style={health ? undefined : { borderColor: `${color}66` }}
     >
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-50">{r?.fullName ?? xray.name}</h1>
             <span className="font-mono text-xs text-slate-500">
-              {xray.stockCode ?? 'UNLISTED'} · {xray.industry}
+              {health ? listingLabels[health.company.listing] : xray.stockCode ?? 'UNLISTED'} · {xray.industry}
             </span>
-            <Badge variant={meta.badge} className="gap-1.5 px-3 py-1 text-xs">
+            <Badge variant={health ? 'warn' : meta.badge} className="gap-1.5 px-3 py-1 text-xs">
               <meta.Icon className="h-3.5 w-3.5" />
-              {meta.label}
+              {health ? '健康度待评估' : meta.label}
             </Badge>
             {quote && (
               <span className="inline-flex items-center gap-2 rounded-btn border border-edge bg-ink-card px-3 py-1 font-mono text-xs">
@@ -84,11 +86,11 @@ export function MetaStrip({ xray }: { xray: CompanyXRay }) {
             {xray.advice}
           </p>
           <div className="mt-3">
-            <DataSourceBadge sources={xray.sources} />
+            {health ? <p className="text-xs text-slate-500">公开来源 {health.sources.length} 条 · 详情见证据溯源</p> : <DataSourceBadge sources={xray.sources} />}
           </div>
         </div>
 
-        <div className="flex items-center gap-5">
+        {!health && <div className="flex items-center gap-5">
           <div
             className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full"
             style={{ background: `conic-gradient(${color} 0 ${xray.hp.score * 3.6}deg, ${t.colors.edge} ${xray.hp.score * 3.6}deg 360deg)` }}
@@ -102,7 +104,7 @@ export function MetaStrip({ xray }: { xray: CompanyXRay }) {
             <StatNumber value={xray.riskScore} className="text-5xl font-bold" duration={1.5} />
             <div className="font-mono text-[10px] tracking-[0.3em] text-slate-500">{terms.riskScoreCaption}</div>
           </div>
-        </div>
+        </div>}
       </div>
     </motion.header>
   )

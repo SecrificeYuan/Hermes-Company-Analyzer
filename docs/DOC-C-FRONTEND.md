@@ -1,5 +1,10 @@
 # DOC-C · 前端渲染系统（分支 `feat/frontend-xray`）
 
+> 2026-10-02 更新：首页搜索、条件筛选与 `/report/[id]` 已切换为公开企业健康评估流程，
+> 新契约为 `lib/company.ts` 的 `CompanyIdentity` / `CompanyHealth`；旧 `CompanyXRay` 用于原有对比接口。
+> 数据来源、匹配语义与覆盖限制以 [PUBLIC-COMPANY-DATA.md](PUBLIC-COMPANY-DATA.md) 为准。
+
+
 > **你的职责：** 让评委在 3 秒内"哇"出来。
 > **铁律：** 只消费 `CompanyXRay`（[lib/types.ts](../lib/types.ts)），**绝不** import `RawCompanyData` 或 `data/mock/*.json`；数据一律来自 `/api/company/[id]/xray` 或页面服务端 `getXRay()`。
 

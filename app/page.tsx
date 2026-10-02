@@ -1,15 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Coins, History, Megaphone, Network, Scale } from 'lucide-react'
 import { NetworkBg } from '@/components/home/NetworkBg'
+import { FilterPanel } from '@/components/home/FilterPanel'
 import { SearchBox } from '@/components/home/SearchBox'
-import { ScanBeam } from '@/components/scan/ScanBeam'
-import { ScanProgress } from '@/components/scan/ScanProgress'
 import { addSearchHistory, getSearchHistory, type SearchRecord } from '@/lib/search-history'
-import type { ListedCompany } from '@/lib/data/eastmoney'
+import type { CompanyIdentity } from '@/lib/company'
 
 const CAPABILITIES = [
   { icon: Coins, label: '财务', note: '现金流与负债' },
@@ -20,23 +19,22 @@ const CAPABILITIES = [
 
 export default function HomePage() {
   const router = useRouter()
-  const [history, setHistory] = useState<SearchRecord[]>(() => getSearchHistory())
-  const [scanning, setScanning] = useState<{ id: string; name: string } | null>(null)
+  const [mode, setMode] = useState<'search' | 'filter'>('search')
+  const [history, setHistory] = useState<SearchRecord[]>([])
+  useEffect(() => setHistory(getSearchHistory()), [])
 
-  const handlePick = (company: ListedCompany) => {
-    if (scanning) return
+  const handlePick = (company: CompanyIdentity) => {
     setHistory(addSearchHistory(company))
-    setScanning(company)
+    router.push(`/report/${company.id}`)
   }
 
   const handleRescan = (record: SearchRecord) => {
-    if (scanning) return
     setHistory(addSearchHistory(record))
-    setScanning(record)
+    router.push(`/report/${record.id}`)
   }
 
   return (
-    <main data-theme="home" className="relative flex min-h-screen flex-col overflow-hidden">
+    <main data-theme="home" className="relative flex min-h-screen flex-col overflow-visible">
       <NetworkBg />
 
       {/* 顶栏 */}
@@ -46,7 +44,7 @@ export default function HomePage() {
       </header>
 
       {/* Hero + 搜索 + 最近搜索 */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6">
+      <div className="relative z-20 flex flex-1 flex-col items-center justify-center px-6">
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -56,42 +54,67 @@ export default function HomePage() {
             HERMES SYSTEM ONLINE
           </div>
           <h1 className="text-5xl font-bold tracking-tight text-slate-50">公司透视</h1>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
-            输入公司名，30 秒生成一张公司透视报告 —— 财务、司法、舆情、股权，散落线索一次看清。
-          </p>
-        </motion.div>
-
-        {/* 搜索框（候选下拉） */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="flex w-full max-w-xl justify-center"
-        >
-          <SearchBox onPick={handlePick} />
-        </motion.div>
-
-        {/* 最近搜索记录 */}
-        <div className="mt-6 w-full max-w-xl">
-          {history.length === 0 ? (
-            <div className="glass-card py-6 text-center font-mono text-xs text-slate-500">
-              暂无搜索记录 —— 在上方搜索一家 A 股公司，开始第一次透视
-            </div>
-          ) : (
-            history.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => handleRescan(r)}
-                className="glass-card glass-card-hover mb-3 flex w-full items-center gap-4 px-5 py-3.5 text-left"
-              >
-                <History className="h-4 w-4 shrink-0 text-neon/70" />
-                <div className="flex-1">
-                  <div className="font-semibold text-slate-100">{r.name}</div>
-                </div>
-                <span className="font-mono text-xs text-slate-500">{r.stockCode}</span>
-              </button>
-            ))
+          <div role="group" aria-label="查询方式" className="mx-auto mt-6 inline-grid grid-cols-2 rounded-btn border border-ink-edge bg-ink-card p-1">
+            <button
+              type="button"
+              aria-pressed={mode === 'search'}
+              onClick={() => setMode('search')}
+              className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${mode === 'search' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
+            >
+              搜索
+            </button>
+            <button
+              type="button"
+              aria-pressed={mode === 'filter'}
+              onClick={() => setMode('filter')}
+              className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${mode === 'filter' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
+            >
+              条件筛选
+            </button>
+          </div>
+          {mode === 'search' && (
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
+              从公开证据了解一家公司的健康状况，评估投资前还需要核实什么。
+            </p>
           )}
+        </motion.div>
+
+        <div className={mode === 'search' ? 'w-full max-w-xl' : 'hidden'}>
+          {/* 搜索框（候选下拉） */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="flex w-full justify-center"
+          >
+            <SearchBox onPick={handlePick} />
+          </motion.div>
+
+          {/* 最近搜索记录 */}
+          <div className="mt-6 w-full">
+            {history.length === 0 ? (
+              <div className="glass-card py-6 text-center font-mono text-xs text-slate-500">
+                暂无搜索记录 —— 搜索上市或未上市企业，开始第一次透视
+              </div>
+            ) : (
+              history.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => handleRescan(r)}
+                  className="glass-card glass-card-hover mb-3 flex w-full items-center gap-4 px-5 py-3.5 text-left"
+                >
+                  <History className="h-4 w-4 shrink-0 text-neon/70" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-slate-100">{r.name}</div>
+                  </div>
+                  <span className="font-mono text-xs text-slate-500">{r.stockCode ?? r.creditCode ?? '企业报告'}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+        <div className={mode === 'filter' ? 'mb-10 w-full max-w-3xl' : 'hidden'}>
+          <FilterPanel />
         </div>
       </div>
 
@@ -116,29 +139,10 @@ export default function HomePage() {
 
       {/* footer */}
       <div className="relative z-10 border-t border-ink-edge py-3 text-center font-mono text-[11px] text-slate-600">
-        DATA: MOCK / AKSHARE / CNINFO / JUHE / GDELT · 仅供演示
+        公开网页与企业披露 · 证据可追溯 · 缺失数据不作推断
       </div>
 
-      {/* 扫描过场 */}
-      <AnimatePresence>
-        {scanning && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-ink-bg/95 backdrop-blur-sm"
-          >
-            <ScanBeam />
-            <motion.div
-              initial={{ scale: 0.96, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="glass-card w-full max-w-md p-8"
-            >
-              <ScanProgress companyName={scanning.name} onDone={() => router.push(`/report/${scanning.id}`)} />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </main>
   )
 }
