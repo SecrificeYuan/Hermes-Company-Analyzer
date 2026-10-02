@@ -27,6 +27,7 @@ import { EvidenceSection } from './detail/EvidenceSection'
 import { AiSection } from './detail/AiSection'
 import { ShareCard } from '@/components/share/ShareCard'
 import { AiGlanceCard } from './AiGlanceCard'
+import { useSentiment } from './useSentiment'
 import { detailOrder, glanceLayout, narrativeOf } from '@/lib/narrative'
 import type { DetailSectionId, GlanceSlot } from '@/lib/narrative'
 import { useMode } from '@/lib/theme/use-tokens'
@@ -58,16 +59,26 @@ function slotTitle(slot: GlanceSlot, terms: ReturnType<typeof getTerms>): string
 export function XrayClient({ xray }: { xray: CompanyXRay }) {
   const mode = useMode()
   const terms = getTerms(mode)
+  const { snapshot: sentiment, loading: sentimentLoading, slow: sentimentSlow } = useSentiment(xray.id)
+  // 只在舆情请求成功后覆盖该切片；综合风险与其余已完成模块保持首次结果，
+  // 避免慢源返回时造成报告版式和主结论跳变。
+  const displayXray: CompanyXRay = sentiment?.status === 'available' && sentiment.morale
+    ? {
+      ...xray,
+      morale: sentiment.morale,
+      detail: xray.detail && { ...xray.detail, sentimentItems: sentiment.items },
+    }
+    : xray
   const narrative = narrativeOf(xray)
   const layout = glanceLayout(xray, narrative)
   const order = detailOrder(layout)
 
   const proCharts: Record<GlanceSlot, ReactNode> = {
-    finance: <CashFlowChart hp={xray.hp} height={280} />,
-    equity: <PledgeSummary xray={xray} />,
-    legal: <LawsuitHeatmap timeline={xray.timeline} height={280} />,
-    sentiment: <SentimentCurve morale={xray.morale} height={280} />,
-    network: <RelationGraph graph={xray.graph} height={280} />,
+    finance: <CashFlowChart hp={displayXray.hp} height={280} />,
+    equity: <PledgeSummary xray={displayXray} />,
+    legal: <LawsuitHeatmap timeline={displayXray.timeline} available={displayXray.atk.available !== false} height={280} />,
+    sentiment: <SentimentCurve morale={displayXray.morale} height={280} loading={sentimentLoading} slow={sentimentSlow} message={sentiment?.message} />,
+    network: <RelationGraph graph={displayXray.graph} height={280} />,
   }
 
   return (
@@ -88,19 +99,19 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
       {/* 头：PRO 元信息条；LITE 角色横幅 + 右侧五维紧凑卡竖列 */}
       {mode === 'pro' ? (
         <motion.div variants={rise} custom={0} initial="hidden" animate="show">
-          <MetaStrip xray={xray} />
+          <MetaStrip xray={displayXray} />
         </motion.div>
       ) : (
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)]">
           <motion.div variants={rise} custom={0} initial="hidden" animate="show" className="min-w-0">
-            <CharacterCard xray={xray} />
+            <CharacterCard xray={displayXray} />
           </motion.div>
           <div className="min-w-0 space-y-4">
             {order.map((id, i) => {
               const k = LITE_SECTION_KEY[id]
               return k ? (
                 <motion.div key={id} variants={rise} custom={1 + i} initial="hidden" animate="show">
-                  <NarrativeCard id={`detail-${id}`} k={k} xray={xray} compact />
+                  <NarrativeCard id={`detail-${id}`} k={k} xray={displayXray} compact />
                 </motion.div>
               ) : null
             })}
@@ -111,7 +122,12 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
       {/* 行情与资金区（PRO 专属） */}
       {mode === 'pro' && (
         <motion.div variants={rise} custom={0.5} initial="hidden" animate="show" className="mt-6">
-          <MarketZone xray={xray} />
+          <MarketZone
+            xray={displayXray}
+            sentimentLoading={sentimentLoading}
+            sentimentSlow={sentimentSlow}
+            sentimentMessage={sentiment?.message}
+          />
         </motion.div>
       )}
 
@@ -130,7 +146,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
                 </CardHeader>
                 <CardContent>
                   {layout.c === 'radar'
-                    ? <AttributeRadar xray={xray} height={560} />
+                    ? <AttributeRadar xray={displayXray} height={560} />
                     : proCharts[layout.c]}
                 </CardContent>
               </Card>
@@ -145,7 +161,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
             ))}
             {/* 右下角补位：AI 速览入口（方案 C） */}
             <motion.div variants={rise} custom={2 + layout.rest.length} initial="hidden" animate="show" className="h-full">
-              <AiGlanceCard xray={xray} />
+              <AiGlanceCard xray={displayXray} />
             </motion.div>
           </div>
         )}
@@ -162,7 +178,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
           <div className="min-w-0 space-y-6">
             {order.map((id) => (
               <SectionShell key={id} id={id} title={terms.sections[id]}>
-                <SectionBody id={id} xray={xray} />
+                <SectionBody id={id} xray={displayXray} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} />
               </SectionShell>
             ))}
           </div>
@@ -180,12 +196,24 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
 }
 
 /** PRO section 内容（顺序由 detailOrder 版式传导） */
-function SectionBody({ id, xray }: { id: DetailSectionId; xray: CompanyXRay }) {
+function SectionBody({
+  id,
+  xray,
+  sentiment,
+  sentimentLoading,
+  sentimentSlow,
+}: {
+  id: DetailSectionId
+  xray: CompanyXRay
+  sentiment?: import('@/lib/types').SentimentSnapshot
+  sentimentLoading: boolean
+  sentimentSlow: boolean
+}) {
   switch (id) {
     case 'financial': return <FinancialSection xray={xray} />
     case 'equity': return <EquitySection xray={xray} />
     case 'legal': return <LegalSection xray={xray} />
-    case 'sentiment': return <SentimentSection xray={xray} />
+    case 'sentiment': return <SentimentSection xray={xray} snapshot={sentiment} loading={sentimentLoading} slow={sentimentSlow} />
     case 'network': return <NetworkSection xray={xray} />
     case 'evidence': return <EvidenceSection xray={xray} />
     case 'ai': return <AiSection />

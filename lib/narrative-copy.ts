@@ -42,6 +42,13 @@ export function narrativeCopy(key: NarrativeKey, x: CompanyXRay): NarrativeCopy 
       }
     }
     case 'atk': {
+      if (x.atk.available === false) {
+        return {
+          big: '暂无法判断',
+          caption: '司法数据暂未接入',
+          text: '当前无法核验诉讼、被执行与失信记录，不能据此推断公司不存在司法风险。',
+        }
+      }
       const exec = x.atk.executionAmount > 0 ? `，被执行的钱有 ${formatWan(x.atk.executionAmount)}` : ''
       return {
         big: `${x.atk.lawsuitCount} 起`,

@@ -15,7 +15,17 @@ import type { CompanyXRay } from '@/lib/types'
  * 左主列：行情快照 → 日 K + 指标 → 资金流向；右副列：舆情仪表盘 → 公司简介 → 分析雷达。
  * 行情数据走 /api/market/* 客户端加载，不阻塞报告主体渲染。
  */
-export function MarketZone({ xray }: { xray: CompanyXRay }) {
+export function MarketZone({
+  xray,
+  sentimentLoading = false,
+  sentimentSlow = false,
+  sentimentMessage,
+}: {
+  xray: CompanyXRay
+  sentimentLoading?: boolean
+  sentimentSlow?: boolean
+  sentimentMessage?: string
+}) {
   const code = xray.stockCode ?? xray.id
   const { quote, kline, fflow, loading } = useMarketData(code)
   const r = xray.registry
@@ -51,20 +61,37 @@ export function MarketZone({ xray }: { xray: CompanyXRay }) {
           <Card>
             <CardHeader><CardTitle>舆情仪表盘</CardTitle></CardHeader>
             <CardContent>
-              <SentimentGauge xray={xray} />
+              <SentimentGauge
+                xray={xray}
+                loading={sentimentLoading}
+                slow={sentimentSlow}
+                message={sentimentMessage}
+              />
             </CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle>公司简介</CardTitle></CardHeader>
             <CardContent>
               {r ? (
-                <dl className="space-y-1.5 font-mono text-xs">
-                  <Row label="公司全称" value={r.fullName} />
-                  <Row label="信用代码" value={r.creditCode} />
-                  <Row label="成立日期" value={r.foundedAt} />
-                  <Row label="注册资本" value={`${(r.registeredCapital / 10000).toFixed(2)}亿`} />
-                  <Row label="所属行业" value={xray.industry} />
-                </dl>
+                <div className="space-y-3">
+                  {(r.profile || r.mainBusiness) && (
+                    <p className="max-h-28 overflow-y-auto pr-1 text-xs leading-relaxed text-slate-300">
+                      {r.profile ?? r.mainBusiness}
+                    </p>
+                  )}
+                  <dl className="space-y-1.5 font-mono text-xs">
+                    <Row label="公司全称" value={r.fullName} />
+                    <Row label="信用代码" value={r.creditCode} />
+                    <Row label="成立日期" value={r.foundedAt} />
+                    <Row label="注册资本" value={`${(r.registeredCapital / 10000).toFixed(2)}亿`} />
+                    <Row label="所属行业" value={xray.industry} />
+                  </dl>
+                  {r.sourceUrl && (
+                    <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="font-mono text-[10px] text-neon hover:underline">
+                      东方财富 F10 公司概况 →
+                    </a>
+                  )}
+                </div>
               ) : (
                 <ChartEmpty height={120} text="工商信息暂缺" />
               )}
