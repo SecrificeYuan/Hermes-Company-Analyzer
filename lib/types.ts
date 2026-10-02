@@ -202,9 +202,3 @@ export interface CompanyXRay {
 // ============================================================
 
 export const SEVERITY_WEIGHT: Record<Severity, number> = { high: 10, mid: 5, low: 2 }
-
-export const RISK_COLOR: Record<RiskLevel, string> = {
-  green: '#00E58A',
-  yellow: '#FFB020',
-  red: '#FF3B5C',
-}
