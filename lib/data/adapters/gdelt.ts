@@ -66,7 +66,27 @@ async function queryName(companyId: string): Promise<string | null> {
   return company?.name ?? null
 }
 
-/** GDELT DOC 2.0: TimelineTone supplies measured tone; ArtList supplies titles. */
+/** GDELT 公共 API 限流：每 IP 每 5 秒 1 次请求，超限返回 429。
+ *  重试收敛为 1 次退避——总时长由 fetcher 的适配器总时限兜底。 */
+const RATE_LIMIT_MS = 5200
+const MAX_ATTEMPTS = 2
+
+async function fetchWithBackoff(url: URL): Promise<Response | null> {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(6000) })
+      if (response.ok) return response
+      if (response.status !== 429 || attempt === MAX_ATTEMPTS) return null
+    } catch {
+      if (attempt === MAX_ATTEMPTS) return null
+    }
+    await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_MS))
+  }
+  return null
+}
+
+/** GDELT DOC 2.0: TimelineTone supplies measured tone; ArtList supplies titles.
+ *  两个请求必须串行（间隔 ≥5s），并行必吃 429。 */
 export const gdeltAdapter: DataAdapter = {
   name: 'gdelt',
   async fetch(companyId): Promise<Partial<RawCompanyData> | null> {
@@ -81,11 +101,9 @@ export const gdeltAdapter: DataAdapter = {
         url.search = new URLSearchParams({ query, mode, format: 'json', timespan: '12m', maxrecords: '250' }).toString()
         return url
       }
-      const [toneResponse, articleResponse] = await Promise.all([
-        fetch(buildUrl('TimelineTone'), { signal: AbortSignal.timeout(8000) }),
-        fetch(buildUrl('ArtList'), { signal: AbortSignal.timeout(8000) }),
-      ])
-      if (!toneResponse.ok || !articleResponse.ok) return null
+      const toneResponse = await fetchWithBackoff(buildUrl('TimelineTone'))
+      const articleResponse = await fetchWithBackoff(buildUrl('ArtList'))
+      if (!toneResponse || !articleResponse) return null
       const sentiment = aggregateGdelt(await toneResponse.json(), await articleResponse.json())
       return sentiment.length ? { sentiment } : null
     } catch {

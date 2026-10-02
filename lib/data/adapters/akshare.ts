@@ -37,9 +37,11 @@ export const akshareAdapter: DataAdapter = {
       if (typeof stockCode !== 'string' || !/^\d{6}\.(SH|SZ|BJ)$/.test(stockCode) || !stockCode.startsWith(companyId)) return null
       if (!years.every((year) =>
         year && typeof year === 'object' && /^\d{4}$/.test(year.year) &&
-        ['revenue', 'netProfit', 'operatingCashFlow', 'debtRatio', 'currentRatio']
+        ['revenue', 'netProfit', 'operatingCashFlow', 'debtRatio']
           .every((key) => typeof year[key] === 'number' && Number.isFinite(year[key])) &&
-        year.revenue >= 0 && year.currentRatio >= 0 && year.debtRatio >= 0,
+        (year.currentRatio === undefined ||
+          (typeof year.currentRatio === 'number' && Number.isFinite(year.currentRatio))) &&
+        year.revenue >= 0 && year.debtRatio >= 0,
       )) return null
 
       return {

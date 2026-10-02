@@ -1,11 +1,12 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { AlertTriangle, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, ShieldAlert, ShieldCheck, TrendingDown, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DataSourceBadge } from './DataSourceBadge'
 import { StatNumber } from './StatNumber'
 import { formatWan } from '@/lib/utils'
+import { useTencentQuote } from '@/lib/hooks/use-tencent-quote'
 import { useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
@@ -23,6 +24,8 @@ export function MetaStrip({ xray }: { xray: CompanyXRay }) {
   const terms = getTerms('pro')
   const color = t.riskColor[xray.overallRisk]
   const r = xray.registry
+  const quote = useTencentQuote(xray.stockCode)
+  const quoteColor = quote && quote.change > 0 ? t.colors.danger : quote && quote.change < 0 ? t.colors.safe : t.colors.textDim
 
   const kv: { k: string; v: string }[] = [
     ...(r ? [{ k: terms.metaStrip.creditCode, v: r.creditCode }] : []),
@@ -50,6 +53,20 @@ export function MetaStrip({ xray }: { xray: CompanyXRay }) {
               <meta.Icon className="h-3.5 w-3.5" />
               {meta.label}
             </Badge>
+            {quote && (
+              <span className="inline-flex items-center gap-2 rounded-btn border border-edge bg-ink-card px-3 py-1 font-mono text-xs">
+                <span className="text-sm font-semibold" style={{ color: quoteColor }}>{quote.price.toFixed(2)}</span>
+                <span className="inline-flex items-center gap-0.5" style={{ color: quoteColor }}>
+                  {quote.change >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                  {quote.change >= 0 ? '+' : ''}{quote.change.toFixed(2)} ({quote.changePct.toFixed(2)}%)
+                </span>
+                <span className="text-slate-500">
+                  高 {quote.high.toFixed(2)} / 低 {quote.low.toFixed(2)}
+                </span>
+                {quote.totalCapYi !== null && <span className="text-slate-500">市值 {quote.totalCapYi.toFixed(0)}亿</span>}
+                {quote.time && <span className="text-slate-600">{quote.time}</span>}
+              </span>
+            )}
           </div>
 
           <dl className="grid grid-cols-2 gap-x-8 gap-y-2 md:grid-cols-3">

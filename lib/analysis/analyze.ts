@@ -60,5 +60,15 @@ export function analyze(raw: RawCompanyData, asOf = new Date(raw.meta.fetchedAt)
     registry: raw.meta.registry,
     llm: raw.llm,
     sources: raw.meta.sources,
+    detail: {
+      financialYears: raw.financial?.years ?? [],
+      lawsuits: raw.legal?.lawsuits ?? [],
+      executions: raw.legal?.executions ?? [],
+      dishonest: raw.legal?.dishonest ?? 0,
+      sentimentItems: raw.sentiment ?? [],
+      shareholders: raw.shareholders ?? [],
+      announcements: raw.announcements ?? [],
+      people: raw.people ?? [],
+    },
   }
 }

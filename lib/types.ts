@@ -13,7 +13,7 @@
 // 第一层：数据源引擎输出
 // ============================================================
 
-export type DataSourceName = 'eastmoney_financial' | 'eastmoney_announcements' | 'akshare' | 'cninfo' | 'juhe' | 'gdelt' | 'mock'
+export type DataSourceName = 'eastmoney_financial' | 'eastmoney_announcements' | 'eastmoney_pledge' | 'eastmoney_holders' | 'akshare' | 'cninfo' | 'juhe' | 'gdelt' | 'mock'
 
 export interface DataSourceStatus {
   name: DataSourceName
@@ -30,7 +30,15 @@ export interface FinancialYear {
   netProfit: number // 净利润，万元
   operatingCashFlow: number // 经营现金流净额，万元
   debtRatio: number // 资产负债率，%
-  currentRatio: number // 流动比率（如 1.5）
+  currentRatio?: number // 流动比率（如 1.5）；银行业等不披露该指标的公司可缺省
+}
+
+/** 十大股东（v1.2 增量，可选）：数据源为东方财富 F10 股东持股 */
+export interface Shareholder {
+  name: string
+  ratio: number // 持股比例，%
+  isInstitution: boolean
+  date?: string // 报告期 YYYY-MM-DD
 }
 
 export type AnnouncementType = '减持' | '质押' | '诉讼' | '问询' | '年报' | '其他'
@@ -112,6 +120,7 @@ export interface RawCompanyData {
   }
   sentiment?: SentimentItem[] // 按日期升序
   people?: PersonEvent[]
+  shareholders?: Shareholder[] // 十大股东，按持股比例降序
   llm?: LlmSummary // LLM 解读（可选），占位期由 mock 提供示例
 }
 
@@ -145,7 +154,7 @@ export interface TimelineEvent {
 export interface GraphNode {
   id: string
   name: string
-  type: 'company' | 'person' | 'court' | 'supplier' | 'media'
+  type: 'company' | 'person' | 'holder' | 'court' | 'supplier' | 'media'
   risk: number // 0-100
 }
 
@@ -195,6 +204,18 @@ export interface CompanyXRay {
   /** v1.1 增量字段（可选，不破坏 v1 消费者）：
    *  数据来源状态，前端用于展示"数据来源/降级"角标。 */
   sources?: DataSourceStatus[]
+
+  /** v1.3 增量字段（可选）：PRO 详读层表格消费的明细切片，由 analyze() 从 raw 透传，不做计算。 */
+  detail?: {
+    financialYears: FinancialYear[]
+    lawsuits: Lawsuit[]
+    executions: Execution[]
+    dishonest: number
+    sentimentItems: SentimentItem[]
+    shareholders: Shareholder[]
+    announcements: Announcement[]
+    people: PersonEvent[]
+  }
 }
 
 // ============================================================

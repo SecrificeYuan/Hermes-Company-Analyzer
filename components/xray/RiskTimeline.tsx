@@ -31,7 +31,7 @@ export function RiskTimeline({ timeline }: { timeline: CompanyXRay['timeline'] }
   }
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <div className="absolute right-0 top-0 z-10 flex gap-1.5">
         <button onClick={() => scrollBy(-320)} className="rounded-btn border border-neon/20 bg-ink-card p-1 text-neon hover:border-neon/60" aria-label="向左滚动">
           <ChevronLeft className="h-4 w-4" />
@@ -41,7 +41,7 @@ export function RiskTimeline({ timeline }: { timeline: CompanyXRay['timeline'] }
         </button>
       </div>
 
-      <div ref={scrollRef} className="overflow-x-auto pb-2 pt-8">
+      <div ref={scrollRef} className="max-w-full overflow-x-auto pb-2 pt-8">
         <div className="relative flex min-w-max gap-0 px-2">
           {/* 水平主线 */}
           <div className="absolute left-0 right-0 top-[26px] h-px bg-gradient-to-r from-neon/40 via-neon/15 to-transparent" />

@@ -26,16 +26,18 @@ export function financialYears(summaryRows: unknown, cashRows: unknown): Financi
     const netProfit = finite(income.PARENTNETPROFIT)
     const operatingCashFlow = finite(flow.NETCASH_OPERATE)
     const debtRatio = finite(income.ZCFZL)
+    // 流动比率银行不披露（LD 恒为 null），缺省时保留该年、字段留空
     const currentRatio = finite(income.LD)
-    if (revenue === null || netProfit === null || operatingCashFlow === null || debtRatio === null || currentRatio === null) continue
-    if (revenue < 0 || debtRatio < 0 || debtRatio > 100 || currentRatio < 0) continue
+    if (revenue === null || netProfit === null || operatingCashFlow === null || debtRatio === null) continue
+    if (revenue < 0 || debtRatio < 0 || debtRatio > 100) continue
+    if (currentRatio !== null && currentRatio < 0) continue
     years.push({
       year,
       revenue: Math.round(revenue / 100) / 100,
       netProfit: Math.round(netProfit / 100) / 100,
       operatingCashFlow: Math.round(operatingCashFlow / 100) / 100,
       debtRatio: Math.round(debtRatio * 100) / 100,
-      currentRatio: Math.round(currentRatio * 100) / 100,
+      ...(currentRatio !== null ? { currentRatio: Math.round(currentRatio * 100) / 100 } : {}),
     })
   }
   return years.slice(-3)

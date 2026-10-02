@@ -174,7 +174,7 @@ function LiteArena({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
         <CompareVerdictBar a={a} b={b} />
       </motion.div>
 
-      <div className="mt-6 grid items-stretch gap-6 lg:grid-cols-[1fr_auto_1fr]">
+      <div className="mt-6 grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <motion.div initial={{ opacity: 0, x: -28 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.1 }} style={cardWrap(outcome === 'A')}>
           <CharacterCard xray={a} />
         </motion.div>

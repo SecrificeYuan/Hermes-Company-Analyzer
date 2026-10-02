@@ -18,6 +18,18 @@ export function buildGraph(raw: RawCompanyData, riskScore: number): CompanyXRay[
     links.push({ source: id, target: 'company', label: `${p.role}·${p.event}`, risk: risky })
   }
 
+  // 十大股东挂机构节点（前 8 个，避免小股东糊满图）；持股超 30% 标风险边
+  for (const holder of (raw.shareholders ?? []).slice(0, 8)) {
+    const id = `holder:${holder.name}`
+    nodes.push({ id, name: holder.name, type: 'holder', risk: holder.ratio > 30 ? 55 : 15 })
+    links.push({
+      source: id,
+      target: 'company',
+      label: `持股 ${holder.ratio}%${holder.isInstitution ? '' : ' · 个人'}`,
+      risk: holder.ratio > 30,
+    })
+  }
+
   const defendantCount = (raw.legal?.lawsuits ?? []).filter((l) => l.role === '被告').length
   if (defendantCount > 0 || (raw.legal?.executions.length ?? 0) > 0) {
     nodes.push({ id: 'court', name: '司法系统', type: 'court', risk: 70 })

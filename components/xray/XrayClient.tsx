@@ -17,6 +17,7 @@ import { RelationGraph } from './RelationGraph'
 import { SentimentCurve } from './SentimentCurve'
 import { AnchorNav } from './AnchorNav'
 import { MetaStrip } from './MetaStrip'
+import { MarketZone } from './market/MarketZone'
 import { SectionShell } from './detail/SectionShell'
 import { FinancialSection } from './detail/FinancialSection'
 import { EquitySection } from './detail/EquitySection'
@@ -26,6 +27,7 @@ import { NetworkSection } from './detail/NetworkSection'
 import { EvidenceSection } from './detail/EvidenceSection'
 import { AiSection } from './detail/AiSection'
 import { ShareCard } from '@/components/share/ShareCard'
+import { AiGlanceCard } from './AiGlanceCard'
 import { detailOrder, glanceLayout, narrativeOf } from '@/lib/narrative'
 import type { DetailSectionId, GlanceSlot } from '@/lib/narrative'
 import { useMode } from '@/lib/theme/use-tokens'
@@ -93,12 +95,19 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         {mode === 'pro' ? <MetaStrip xray={xray} /> : <CharacterCard xray={xray} />}
       </motion.div>
 
+      {/* 行情与资金区（PRO 专属） */}
+      {mode === 'pro' && (
+        <motion.div variants={rise} custom={0.5} initial="hidden" animate="show" className="mt-6">
+          <MarketZone xray={xray} />
+        </motion.div>
+      )}
+
       {/* 速览层（规格 §3.3） */}
       <div className="mt-6">
         {mode === 'pro' ? (
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
             {/* C 位：2×2 放大 */}
-            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="lg:col-span-2 lg:row-span-2">
+            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-w-0 lg:col-span-2 lg:row-span-2">
               <Card className="h-full">
                 <CardHeader>
                   <CardTitle>
@@ -120,11 +129,15 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
                 </Card>
               </motion.div>
             ))}
+            {/* 右下角补位：AI 速览入口（方案 C） */}
+            <motion.div variants={rise} custom={2 + layout.rest.length} initial="hidden" animate="show" className="h-full">
+              <AiGlanceCard xray={xray} />
+            </motion.div>
           </div>
         ) : (
           /* LITE：C 位大卡 + 3 迷你卡（其余维度取前 3，关联网络不进速览层） */
-          <div className="grid gap-6 lg:grid-cols-3">
-            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="lg:col-span-2">
+          <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
+            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-w-0 lg:col-span-2">
               {layout.c === 'radar' ? (
                 <Card className="h-full">
                   <CardHeader><CardTitle>{terms.cardTitles.radar}</CardTitle></CardHeader>
@@ -153,9 +166,9 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         </h2>
 
         {mode === 'pro' ? (
-          <div className="grid gap-6 lg:grid-cols-[180px_1fr]">
+          <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
             <AnchorNav items={order.map((id) => ({ id, label: terms.sections[id] }))} />
-            <div className="space-y-6">
+            <div className="min-w-0 space-y-6">
               {order.map((id) => (
                 <SectionShell key={id} id={id} title={terms.sections[id]}>
                   <SectionBody id={id} xray={xray} />
@@ -164,7 +177,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
             </div>
           </div>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
             {order.map((id) => {
               const k = LITE_SECTION_KEY[id]
               return k ? <NarrativeCard key={id} id={`detail-${id}`} k={k} xray={xray} /> : null

@@ -14,6 +14,7 @@ export function RelationGraph({ graph, height = 340 }: { graph: CompanyXRay['gra
   const NODE_COLOR: Record<GraphNode['type'], string> = {
     company: t.colors.accent,
     person: t.colors.grape,
+    holder: t.colors.safe,
     court: t.colors.danger,
     supplier: t.colors.warn,
     media: t.colors.textDim,

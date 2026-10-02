@@ -3,10 +3,22 @@ import type { DataAdapter } from './adapter'
 import { financialAdapter } from './adapters/financial'
 import { announcementAdapter } from './adapters/cninfo'
 import { gdeltAdapter } from './adapters/gdelt'
+import { pledgeAdapter } from './adapters/pledge'
+import { holdersAdapter } from './adapters/holders'
 import { resolveCompany } from './eastmoney'
 import { cacheGet, cacheSet } from './cache'
 
-const ADAPTERS: DataAdapter[] = [financialAdapter, announcementAdapter, gdeltAdapter]
+const ADAPTERS: DataAdapter[] = [financialAdapter, announcementAdapter, pledgeAdapter, holdersAdapter, gdeltAdapter]
+
+/** 单适配器总时限：慢源（如 GDELT 退避重试）最多占用这么久，超时不拖住整页 */
+const ADAPTER_DEADLINE_MS = 6000
+
+function withDeadline<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('ADAPTER_TIMEOUT')), ms)),
+  ])
+}
 
 export class CompanyNotFoundError extends Error {
   constructor(id: string) {
@@ -46,7 +58,7 @@ export async function fetchRawCompany(input: string): Promise<RawCompanyData> {
 
   const settled = await Promise.allSettled(ADAPTERS.map(async (adapter) => {
     const started = Date.now()
-    const data = await adapter.fetch(company.id)
+    const data = await withDeadline(adapter.fetch(company.id), ADAPTER_DEADLINE_MS)
     return { data, latencyMs: Date.now() - started }
   }))
 
@@ -61,7 +73,7 @@ export async function fetchRawCompany(input: string): Promise<RawCompanyData> {
   for (const [index, result] of settled.entries()) {
     const name = ADAPTERS[index].name
     const data = result.status === 'fulfilled' ? result.value.data : null
-    const ok = Boolean(data && (data.financial || data.announcements || data.legal || data.sentiment || data.people))
+    const ok = Boolean(data && (data.financial || data.announcements || data.legal || data.sentiment || data.people || data.shareholders))
     statuses.push({ name, ok, fallback: false, latencyMs: result.status === 'fulfilled' ? result.value.latencyMs : 0 })
     if (!ok || !data) continue
     hasData = true
@@ -70,7 +82,8 @@ export async function fetchRawCompany(input: string): Promise<RawCompanyData> {
     if (data.announcements) merged.announcements = data.announcements
     if (data.legal) merged.legal = data.legal
     if (data.sentiment) merged.sentiment = data.sentiment
-    if (data.people) merged.people = data.people
+    if (data.people) merged.people = [...(merged.people ?? []), ...data.people]
+    if (data.shareholders) merged.shareholders = data.shareholders
   }
   if (!hasData) throw new NoVerifiedDataError(company.id)
   merged.meta.sources = statuses

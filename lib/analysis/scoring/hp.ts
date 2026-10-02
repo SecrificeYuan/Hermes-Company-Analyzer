@@ -16,7 +16,8 @@ export function scoreHp(financial: RawCompanyData['financial']): CompanyXRay['hp
   const cfRatio = latest.revenue > 0 ? latest.operatingCashFlow / latest.revenue : -1
   const cfScore =
     latest.operatingCashFlow >= 0 ? 60 + 40 * Math.min(cfRatio, 1) : 40 * Math.max(0, 1 + cfRatio)
-  const crScore = Math.min(latest.currentRatio / 2, 1) * 100
+  // 银行业等不披露流动比率：按中性 50 分计，不把"未知"当作"零流动性"
+  const crScore = latest.currentRatio === undefined ? 50 : Math.min(latest.currentRatio / 2, 1) * 100
   const debtScore = clamp(100 - latest.debtRatio)
 
   let score = 0.4 * cfScore + 0.3 * crScore + 0.3 * debtScore

@@ -32,7 +32,7 @@ export function AnchorNav({ items }: { items: AnchorItem[] }) {
   }, [items])
 
   return (
-    <nav className="flex gap-2 overflow-x-auto lg:sticky lg:top-6 lg:flex-col lg:overflow-visible">
+    <nav className="flex gap-2 overflow-x-auto lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:flex-col lg:overflow-y-auto lg:overflow-x-visible">
       {items.map(({ id, label }) => (
         <a
           key={id}
