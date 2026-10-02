@@ -11,7 +11,6 @@ import { CashFlowChart } from './CashFlowChart'
 import { CharacterCard } from './CharacterCard'
 import { EvidenceDrawer } from './EvidenceDrawer'
 import { LawsuitHeatmap } from './LawsuitHeatmap'
-import { MiniDimCard } from './MiniDimCard'
 import { NarrativeCard } from './NarrativeCard'
 import { RelationGraph } from './RelationGraph'
 import { SentimentCurve } from './SentimentCurve'
@@ -37,10 +36,6 @@ import type { CompanyXRay, NarrativeKey } from '@/lib/types'
 const rise = {
   hidden: { opacity: 0, y: 20 },
   show: (i: number) => ({ opacity: 1, y: 0, transition: { delay: 0.12 + i * 0.05, duration: 0.5 } }),
-}
-
-const SLOT_KEY: Record<GlanceSlot, NarrativeKey> = {
-  finance: 'hp', equity: 'def', legal: 'atk', sentiment: 'morale', network: 'network',
 }
 
 /** LITE 详读层只渲染五个维度卡（证据入口在每张卡上；ai 为 PRO 专属 section） */
@@ -102,9 +97,10 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         </motion.div>
       )}
 
-      {/* 速览层（规格 §3.3） */}
+      {/* 速览层（规格 §3.3）：仅 PRO；LITE 的信息已并入上方横幅与下方维度网格 */}
+      {mode === 'pro' && (
       <div className="mt-6">
-        {mode === 'pro' ? (
+        {(
           <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
             {/* C 位：2×2 放大 */}
             <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-w-0 lg:col-span-2 lg:row-span-2">
@@ -134,35 +130,14 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
               <AiGlanceCard xray={xray} />
             </motion.div>
           </div>
-        ) : (
-          /* LITE：C 位大卡 + 3 迷你卡（其余维度取前 3，关联网络不进速览层） */
-          <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
-            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-w-0 lg:col-span-2">
-              {layout.c === 'radar' ? (
-                <Card className="h-full">
-                  <CardHeader><CardTitle>{terms.cardTitles.radar}</CardTitle></CardHeader>
-                  <CardContent><AttributeRadar xray={xray} height={380} /></CardContent>
-                </Card>
-              ) : (
-                <NarrativeCard id="glance-c" k={SLOT_KEY[layout.c]} xray={xray} />
-              )}
-            </motion.div>
-            {layout.rest
-              .filter((s) => s !== 'network')
-              .slice(0, 3)
-              .map((slot, i) => (
-                <motion.div key={slot} variants={rise} custom={2 + i} initial="hidden" animate="show">
-                  <MiniDimCard id={`glance-${slot}`} k={SLOT_KEY[slot]} xray={xray} />
-                </motion.div>
-              ))}
-          </div>
         )}
       </div>
+      )}
 
-      {/* 详读层（规格 §3.4） */}
+      {/* 维度层（规格 §3.4）：LITE 把速览与详读合并为一张三列网格，顺序沿用 narrative 传导 */}
       <div className="mt-10">
         <h2 className="mb-4 font-mono text-xs tracking-[0.3em] text-slate-500">
-          {mode === 'pro' ? 'DETAIL REPORT' : '慢慢看 · 每个部分的详情'}
+          {mode === 'pro' ? 'DETAIL REPORT' : '五个维度 · 慢慢看'}
         </h2>
 
         {mode === 'pro' ? (
@@ -177,7 +152,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
             </div>
           </div>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
             {order.map((id) => {
               const k = LITE_SECTION_KEY[id]
               return k ? <NarrativeCard key={id} id={`detail-${id}`} k={k} xray={xray} /> : null
