@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from 'next'
 import { ThemeSync } from '@/components/theme/ThemeSync'
-import { ModeToggle } from '@/components/theme/ModeToggle'
+import { SiteChrome } from '@/components/theme/SiteChrome'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Hermes · 公司 X 光机',
-  description: '输入公司名，30 秒生成一张公司 X 光片：健康度/风险事件/股权网络/风险时间轴。',
+  title: 'HERMES · 公司透视',
+  description: '输入公司名，30 秒生成一张公司透视报告：财务/司法/舆情/股权四维尽调一次看清。',
 }
 
 export const viewport: Viewport = {
@@ -17,9 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="zh-CN" className="dark">
       <body className="bg-grid min-h-screen">
         <ThemeSync />
-        <div className="fixed right-4 top-4 z-50">
-          <ModeToggle />
-        </div>
+        <SiteChrome />
         {children}
       </body>
     </html>
