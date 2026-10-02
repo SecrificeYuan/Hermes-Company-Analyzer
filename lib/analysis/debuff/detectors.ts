@@ -4,7 +4,8 @@ const DAY_MS = 24 * 3600 * 1000
 
 export function withinDays(date: string, asOf: Date, days: number): boolean {
   const t = new Date(date).getTime()
-  return asOf.getTime() - t <= days * DAY_MS && t <= asOf.getTime() + DAY_MS
+  const anchor = asOf.getTime()
+  return Number.isFinite(t) && Number.isFinite(anchor) && t <= anchor && anchor - t <= days * DAY_MS
 }
 
 /** 近 N 天诉讼（默认被告才算风险，原告维权不算） */
