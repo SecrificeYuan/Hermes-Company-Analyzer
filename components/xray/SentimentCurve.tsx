@@ -7,11 +7,24 @@ import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import type { CompanyXRay } from '@/lib/types'
 
 /** 舆情情绪曲线：0 为中线，上青下红 */
-export function SentimentCurve({ morale, height = 220 }: { morale: CompanyXRay['morale']; height?: number }) {
+export function SentimentCurve({
+  morale,
+  height = 220,
+  loading = false,
+  slow = false,
+  message,
+}: {
+  morale?: CompanyXRay['morale']
+  height?: number
+  loading?: boolean
+  slow?: boolean
+  message?: string
+}) {
   const t = useTokens()
   const mode = useMode()
 
-  if (morale.trend.length === 0) return <ChartEmpty height={height} text="舆情数据暂缺" />
+  if (loading) return <ChartEmpty height={height} text={slow ? '东方财富新闻加载中，报告其他模块可正常使用' : '正在加载东方财富新闻'} />
+  if (!morale || morale.available === false || morale.trend.length === 0) return <ChartEmpty height={height} text={message ?? '舆情暂无法判断'} />
 
   const labels = morale.labels ?? morale.trend.map((_, i) => `期${i + 1}`)
   const base = baseChartOptionFor(t)

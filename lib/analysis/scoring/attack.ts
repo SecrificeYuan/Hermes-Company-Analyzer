@@ -7,9 +7,9 @@ const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v))
  * 注意语义：ATK 越高代表法律战火越旺，是风险信号而非褒义。
  */
 export function scoreAttack(legal: RawCompanyData['legal']): CompanyXRay['atk'] {
-  // 没有司法切片不等于“没有纠纷”，用中性分并明确标示数据状态。
+  // 没有司法切片不等于“没有纠纷”。50 仅维持既有数值契约，不能参与任何结论或可视化。
   if (!legal) {
-    return { score: 50, label: '数据不足', lawsuitCount: 0, executionAmount: 0 }
+    return { score: 50, label: '暂无法判断', lawsuitCount: 0, executionAmount: 0, available: false }
   }
   const lawsuitCount = legal?.lawsuits.length ?? 0
   const executionAmount = (legal?.executions ?? []).reduce((sum, e) => sum + e.amount, 0)
@@ -18,5 +18,5 @@ export function scoreAttack(legal: RawCompanyData['legal']): CompanyXRay['atk'] 
   const label =
     score >= 70 ? '战火缠身' : score >= 40 ? '纠纷不断' : score >= 15 ? '偶有摩擦' : '与世无争'
 
-  return { score, label, lawsuitCount, executionAmount }
+  return { score, label, lawsuitCount, executionAmount, available: true }
 }

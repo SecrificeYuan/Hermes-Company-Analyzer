@@ -26,8 +26,17 @@ export function analyze(raw: RawCompanyData, asOf = new Date(raw.meta.fetchedAt)
   const hiddenStatus = detectHiddenStatus(raw, asOf)
   const debuffPenalty = Math.min(20, hiddenStatus.reduce((s, d) => s + SEVERITY_WEIGHT[d.severity], 0))
 
-  // 综合风险分：四维加权的补数 + debuff 惩罚
-  const composite = hp.score * 0.35 + def.score * 0.25 + (100 - atk.score) * 0.15 + morale.score * 0.25
+  // 综合风险分只消费已验证切片，并按剩余权重重新归一化。
+  // 缺失司法/舆情时的 50 分只是兼容占位，绝不能把“未知”伪装为中性结论。
+  const components = [
+    { value: hp.score, weight: 0.35, available: true },
+    { value: def.score, weight: 0.25, available: true },
+    { value: 100 - atk.score, weight: 0.15, available: atk.available !== false },
+    { value: morale.score, weight: 0.25, available: morale.available !== false },
+  ]
+  const availableComponents = components.filter((component) => component.available)
+  const totalWeight = availableComponents.reduce((sum, component) => sum + component.weight, 0)
+  const composite = availableComponents.reduce((sum, component) => sum + component.value * component.weight, 0) / totalWeight
   const riskScore = Math.round(clamp(100 - composite + debuffPenalty))
   const overallRisk = riskScore < 35 ? 'green' : riskScore < 65 ? 'yellow' : 'red'
 

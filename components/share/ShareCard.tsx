@@ -16,6 +16,22 @@ export function ShareCard({ xray }: { xray: CompanyXRay }) {
   const cardRef = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
   const color = t.riskColor[xray.overallRisk]
+  const attributes = [
+    { label: 'HP', value: String(xray.hp.score), score: xray.hp.score, available: true },
+    { label: 'DEF', value: String(xray.def.score), score: xray.def.score, available: true },
+    {
+      label: 'ATK',
+      value: xray.atk.available === false ? '待核验' : String(xray.atk.score),
+      score: xray.atk.score,
+      available: xray.atk.available !== false,
+    },
+    {
+      label: '士气',
+      value: xray.morale.available === false ? '待加载' : String(xray.morale.score),
+      score: xray.morale.score,
+      available: xray.morale.available !== false,
+    },
+  ]
 
   const exportPng = async () => {
     if (!cardRef.current || busy) return
@@ -59,16 +75,11 @@ export function ShareCard({ xray }: { xray: CompanyXRay }) {
 
           <div className="flex items-end justify-between">
             <div className="flex gap-10 font-mono">
-              {([
-                ['HP', xray.hp.score],
-                ['DEF', xray.def.score],
-                ['ATK', xray.atk.score],
-                ['士气', xray.morale.score],
-              ] as const).map(([label, score]) => (
-                <div key={label}>
-                  <div className="text-xs tracking-[0.3em] text-slate-500">{label}</div>
-                  <div className="mt-1 text-5xl font-bold" style={{ color: scoreColor(t, score) }}>
-                    {score}
+              {attributes.map((attribute) => (
+                <div key={attribute.label}>
+                  <div className="text-xs tracking-[0.3em] text-slate-500">{attribute.label}</div>
+                  <div className="mt-1 text-5xl font-bold" style={{ color: attribute.available ? scoreColor(t, attribute.score) : t.colors.textDim }}>
+                    {attribute.value}
                   </div>
                 </div>
               ))}
