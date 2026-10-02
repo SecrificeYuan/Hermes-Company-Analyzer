@@ -7,11 +7,11 @@ import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import type { CompanyXRay } from '@/lib/types'
 
 /** 舆情情绪曲线：0 为中线，上青下红 */
-export function SentimentCurve({ morale }: { morale: CompanyXRay['morale'] }) {
+export function SentimentCurve({ morale, height = 220 }: { morale: CompanyXRay['morale']; height?: number }) {
   const t = useTokens()
   const mode = useMode()
 
-  if (morale.trend.length === 0) return <ChartEmpty height={220} text="舆情数据暂缺" />
+  if (morale.trend.length === 0) return <ChartEmpty height={height} text="舆情数据暂缺" />
 
   const labels = morale.labels ?? morale.trend.map((_, i) => `期${i + 1}`)
   const base = baseChartOptionFor(t)
@@ -54,5 +54,5 @@ export function SentimentCurve({ morale }: { morale: CompanyXRay['morale'] }) {
       seriesIndex: 0,
     },
   }
-  return <EChart option={option} height={220} theme={mode} />
+  return <EChart option={option} height={height} theme={mode} />
 }

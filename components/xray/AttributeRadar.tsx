@@ -8,7 +8,7 @@ import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
 
 /** 五维雷达：HP / DEF / ATK(涉诉) / 士气 / 稳健，主色=主题 accent 半透明填充 */
-export function AttributeRadar({ xray }: { xray: CompanyXRay }) {
+export function AttributeRadar({ xray, height = 250 }: { xray: CompanyXRay; height?: number }) {
   const t = useTokens()
   const mode = useMode()
   const terms = getTerms(mode)
@@ -39,5 +39,5 @@ export function AttributeRadar({ xray }: { xray: CompanyXRay }) {
       },
     ],
   }
-  return <EChart option={option} height={250} theme={mode} />
+  return <EChart option={option} height={height} theme={mode} />
 }

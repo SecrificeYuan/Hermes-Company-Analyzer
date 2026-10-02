@@ -7,7 +7,7 @@ import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import type { CompanyXRay, GraphNode } from '@/lib/types'
 
 /** 关系图谱：力导向布局，节点发光，风险边红色 */
-export function RelationGraph({ graph }: { graph: CompanyXRay['graph'] }) {
+export function RelationGraph({ graph, height = 340 }: { graph: CompanyXRay['graph']; height?: number }) {
   const t = useTokens()
   const mode = useMode()
 
@@ -67,5 +67,5 @@ export function RelationGraph({ graph }: { graph: CompanyXRay['graph'] }) {
       },
     ],
   }
-  return <EChart option={option} height={340} theme={mode} />
+  return <EChart option={option} height={height} theme={mode} />
 }

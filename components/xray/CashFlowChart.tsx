@@ -8,11 +8,11 @@ import { formatWan } from '@/lib/utils'
 import type { CompanyXRay } from '@/lib/types'
 
 /** 现金流趋势：渐变面积折线，负值段自动变红 */
-export function CashFlowChart({ hp }: { hp: CompanyXRay['hp'] }) {
+export function CashFlowChart({ hp, height = 250 }: { hp: CompanyXRay['hp']; height?: number }) {
   const t = useTokens()
   const mode = useMode()
 
-  if (hp.trend.length === 0) return <ChartEmpty height={250} text="财务数据暂缺" />
+  if (hp.trend.length === 0) return <ChartEmpty height={height} text="财务数据暂缺" />
 
   const labels = hp.labels ?? hp.trend.map((_, i) => `期${i + 1}`)
   const extent = Math.max(1, ...hp.trend.map((v) => Math.abs(v)))
@@ -63,5 +63,5 @@ export function CashFlowChart({ hp }: { hp: CompanyXRay['hp'] }) {
       seriesIndex: 0,
     },
   }
-  return <EChart option={option} height={250} theme={mode} />
+  return <EChart option={option} height={height} theme={mode} />
 }
