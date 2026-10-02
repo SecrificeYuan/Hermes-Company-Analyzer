@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { deriveLight } from '@/lib/analysis/light'
 import { analyze } from '@/lib/analysis/analyze'
+import { healthToXray } from '@/lib/data/health-xray'
+import type { CompanyHealth } from '@/lib/company'
 import dangerJson from '@/data/mock/company-danger.json'
 import warningJson from '@/data/mock/company-warning.json'
 import healthyJson from '@/data/mock/company-healthy.json'
@@ -81,5 +83,26 @@ describe('analyze 挂灯（三档回归 + 灯断言）', () => {
     const d = analyze(raw(dangerJson))
     expect(d.overallRisk).toBe('red')
     expect(d.light).toMatchObject({ color: 'red', headline: '先别付这钱' })
+  })
+})
+
+const healthOf = (overall: 'partial' | 'insufficient', financialRisk: 'low' | 'medium' | 'high' | null): CompanyHealth => ({
+  company: { id: 'gym-1', name: '测试健身房', listing: 'unlisted', identity: 'lead', sources: [] },
+  asOf: '2026-10-01T00:00:00Z',
+  financialYear: null, years: [],
+  metrics: { revenueGrowth: null, netMargin: null, debtRatio: null, currentRatio: null, netProfit: null, operatingCashFlow: null, pledgeRatio: null, lawsuitAnnouncements: null, executionAnnouncements: null },
+  financialRisk, riskReasons: financialRisk ? ['测试原因'] : [], overall, gaps: ['财务报表'],
+  investment: { status: 'needs_due_diligence', annualizedReturn: null, minimumInvestment: null, exitMonths: null, reason: '资料不足，无法给出回报率。' },
+  sources: [], announcements: [],
+} as unknown as CompanyHealth)
+
+describe('非上市灯（healthToXray）', () => {
+  it('覆盖不足时绿色基准压黄 + limitedSignals', () => {
+    const x = healthToXray(healthOf('insufficient', 'low'))
+    expect(x.light).toMatchObject({ color: 'yellow', limitedSignals: true })
+    expect(x.light?.reason).toContain('不全')
+  })
+  it('覆盖 partial 同理压黄', () => {
+    expect(healthToXray(healthOf('partial', 'low')).light?.color).toBe('yellow')
   })
 })

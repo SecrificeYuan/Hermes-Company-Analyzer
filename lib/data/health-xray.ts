@@ -1,3 +1,4 @@
+import { deriveLight, type Coverage } from '@/lib/analysis/light'
 import type { CompanyHealth } from '@/lib/company'
 import type { CompanyXRay, TimelineEvent } from '@/lib/types'
 
@@ -24,6 +25,11 @@ export function healthToXray(report: CompanyHealth): CompanyXRay {
     atk: { score: atkScore, label: metrics.lawsuitAnnouncements === null ? '数据不足' : '公开公告线索', lawsuitCount: metrics.lawsuitAnnouncements ?? 0, executionAmount: 0 },
     morale: { score: 50, label: '数据不足', avgTone: 0, trend: [] }, hiddenStatus: [], timeline: timeline(report), graph: { nodes: [{ id: company.id, name: company.fullName ?? company.name, type: 'company', risk: riskScore }], links: [] },
     verdict: report.financialRisk === null ? '公开资料不足，当前只能确认企业线索与少量主体信息；缺失数据不会被当作低风险。' : report.riskReasons.join('；'), advice: report.investment.reason,
+    light: deriveLight({
+      overallRisk: risk,
+      hiddenStatus: [],
+      coverage: (report.overall === 'partial' ? 'partial' : 'insufficient') as Coverage,
+    }),
     sources: sourceStatuses, detail: { financialYears: years, lawsuits: [], executions: [], dishonest: 0, sentimentItems: [], shareholders: [], announcements: report.announcements, people: [] }, narrative: 'balanced',
   }
 }
