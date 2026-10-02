@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { History } from 'lucide-react'
 import { NetworkBg } from '@/components/home/NetworkBg'
 import { FlashMarquee } from '@/components/home/FlashMarquee'
+import { FilterPanel } from '@/components/home/FilterPanel'
 import { SearchBox } from '@/components/home/SearchBox'
 import { ScanBeam } from '@/components/scan/ScanBeam'
 import { ScanProgress } from '@/components/scan/ScanProgress'
@@ -16,6 +17,7 @@ export default function HomePage() {
   const router = useRouter()
   const [history, setHistory] = useState<SearchRecord[]>(() => getSearchHistory())
   const [scanning, setScanning] = useState<{ id: string; name: string } | null>(null)
+  const [queryMode, setQueryMode] = useState<'search' | 'filter'>('search')
 
   const handlePick = (company: ListedCompany) => {
     if (scanning) return
@@ -39,21 +41,53 @@ export default function HomePage() {
         <span className="font-mono text-[11px] text-slate-600">v0.9 · DEMO</span>
       </header>
 
-      {/* Hero + 搜索 + 最近搜索 */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6">
+      {/* Hero + 搜索/筛选 + 最近搜索 */}
+      <div className={`relative z-10 flex min-h-0 flex-1 flex-col items-center px-6 ${queryMode === 'filter' ? 'overflow-y-auto' : 'justify-center'}`}>
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-10 text-center"
+          className={`shrink-0 text-center ${queryMode === 'filter' ? 'mt-10 mb-6' : 'mb-10'}`}
         >
           <div className="mb-4 font-mono text-[11px] tracking-[0.35em] text-neon/80">
             HERMES SYSTEM ONLINE
           </div>
           <h1 className="text-5xl font-bold tracking-tight text-slate-50">公司透视</h1>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
-            输入公司名，30 秒生成一张公司透视报告 —— 财务、司法、舆情、股权，散落线索一次看清。
-          </p>
+          <div role="group" aria-label="查询方式" className="mx-auto mt-6 inline-grid grid-cols-2 rounded-btn border border-ink-edge bg-ink-card p-1">
+            <button
+              type="button"
+              aria-pressed={queryMode === 'search'}
+              onClick={() => setQueryMode('search')}
+              className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${queryMode === 'search' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
+            >
+              搜索
+            </button>
+            <button
+              type="button"
+              aria-pressed={queryMode === 'filter'}
+              onClick={() => setQueryMode('filter')}
+              className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${queryMode === 'filter' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
+            >
+              条件筛选
+            </button>
+          </div>
+          {queryMode === 'search' && (
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
+              输入公司名，30 秒生成一张公司透视报告 —— 财务、司法、舆情、股权，散落线索一次看清。
+            </p>
+          )}
         </motion.div>
+
+        {queryMode === 'filter' ? (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-10 flex w-full justify-center"
+          >
+            <FilterPanel />
+          </motion.div>
+        ) : (
+        <>
 
         {/* 搜索框（候选下拉） */}
         <motion.div
@@ -87,6 +121,8 @@ export default function HomePage() {
             ))
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* 底部快讯跑马灯（替代原能力带） */}
