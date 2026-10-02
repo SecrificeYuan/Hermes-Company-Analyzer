@@ -5,7 +5,8 @@ import { AlertTriangle, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DataSourceBadge } from './DataSourceBadge'
 import { StatNumber } from './StatNumber'
-import { useTokens } from '@/lib/theme/use-tokens'
+import { useMode, useTokens } from '@/lib/theme/use-tokens'
+import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
 
 const RISK_META = {
@@ -14,10 +15,12 @@ const RISK_META = {
   red: { label: '高风险 · RED', Icon: ShieldAlert, badge: 'danger' as const },
 }
 
-/** 一句话诊断横幅：报告页的"标题党"，3 秒定调 */
+/** 评级结论条：LITE 带霓虹扫描线；PRO 克制终端风（扫描线禁用） */
 export function VerdictBanner({ xray }: { xray: CompanyXRay }) {
-  const t = useTokens()
   const meta = RISK_META[xray.overallRisk]
+  const t = useTokens()
+  const mode = useMode()
+  const terms = getTerms(mode)
   const color = t.riskColor[xray.overallRisk]
 
   return (
@@ -27,10 +30,14 @@ export function VerdictBanner({ xray }: { xray: CompanyXRay }) {
       className="glass-card relative overflow-hidden p-6"
       style={{ borderColor: `${color}66` }}
     >
-      {/* 顶部霓虹扫描线：视觉记忆点 */}
-      <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden">
-        <div className="animate-scanline h-full w-1/3 bg-gradient-to-r from-transparent via-neon to-transparent" />
-      </div>
+      {/* 扫描线仅 LITE；PRO 顶部改为语义色细线 */}
+      {mode === 'lite' ? (
+        <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden">
+          <div className="animate-scanline h-full w-1/3 bg-gradient-to-r from-transparent via-neon to-transparent" />
+        </div>
+      ) : (
+        <div className="absolute inset-x-0 top-0 h-[2px]" style={{ background: color }} />
+      )}
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
@@ -57,7 +64,9 @@ export function VerdictBanner({ xray }: { xray: CompanyXRay }) {
           </Badge>
           <div className="text-right">
             <StatNumber value={xray.riskScore} className="text-5xl font-bold" duration={1.5} />
-            <div className="font-mono text-[10px] tracking-[0.3em] text-slate-500">RISK SCORE</div>
+            <div className="font-mono text-[10px] tracking-[0.3em] text-slate-500">
+              {terms.riskScoreCaption}
+            </div>
           </div>
         </div>
       </div>
