@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { CharacterCard } from '@/components/xray/CharacterCard'
 import { EvidenceDrawer } from '@/components/xray/EvidenceDrawer'
 import { CompareSelector } from './CompareSelector'
+import { BattleLoading } from './BattleLoading'
 import { CompareVerdictBar } from './CompareVerdictBar'
 import { DualRadar } from './DualRadar'
 import { LlmPlaceholder } from './LlmPlaceholder'
@@ -159,7 +160,7 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
         </div>
       )}
 
-      {loading && <LoadingSkeleton />}
+      {loading && (mode === 'pro' ? <LoadingSkeleton /> : <BattleLoading />)}
 
       {!loading && !error && result && (mode === 'pro'
         ? <ProFlow a={result.A} b={result.B} />
