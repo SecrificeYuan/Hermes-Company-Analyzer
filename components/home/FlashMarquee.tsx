@@ -45,7 +45,7 @@ export function FlashMarquee() {
 
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex h-[33vh] flex-col overflow-hidden"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] flex h-[33vh] flex-col overflow-hidden"
       style={{
         maskImage: 'linear-gradient(to top, black 55%, transparent)',
         WebkitMaskImage: 'linear-gradient(to top, black 55%, transparent)',

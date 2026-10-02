@@ -42,7 +42,7 @@ export default function HomePage() {
       </header>
 
       {/* Hero + 搜索/筛选 + 最近搜索 */}
-      <div className={`relative z-10 flex min-h-0 flex-1 flex-col items-center px-6 [&:has(.glass-card-hover:hover)]:z-30 ${queryMode === 'filter' ? 'overflow-y-auto' : 'justify-center'}`}>
+      <div className={`relative z-10 flex min-h-0 flex-1 flex-col items-center px-6 ${queryMode === 'filter' ? 'overflow-y-auto' : 'justify-center'}`}>
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
