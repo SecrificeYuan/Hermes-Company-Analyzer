@@ -138,12 +138,13 @@ export async function* chatStream(opts: ChatOptions): AsyncGenerator<{ type: 'de
     const cfg = llmConfig()
     if (!cfg) return
     const { signal, clear } = buildUrlSignal(opts.signal)
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
     try {
       const { url, init } = buildRequest(cfg, opts, true)
       const res = await fetch(url, { ...init, signal })
       if (!res.ok || !res.body) return
       // Node 18+/浏览器均提供 getReader；jsdom 下 Response 来自 undici，也支持
-      const reader = (res.body as unknown as { getReader(): ReadableStreamDefaultReader<Uint8Array> }).getReader()
+      reader = (res.body as unknown as { getReader(): ReadableStreamDefaultReader<Uint8Array> }).getReader()
       const decoder = new TextDecoder()
       let buf = ''
       for (;;) {
@@ -172,6 +173,8 @@ export async function* chatStream(opts: ChatOptions): AsyncGenerator<{ type: 'de
         }
       }
     } finally {
+      // 释放 reader，避免消费端 break/异常/超时导致连接悬挂
+      if (reader) await reader.cancel().catch(() => {})
       clear()
     }
   } catch {

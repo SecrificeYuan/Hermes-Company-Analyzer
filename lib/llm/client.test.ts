@@ -128,4 +128,62 @@ describe('lib/llm/client', () => {
     expect(events).toEqual([{ type: 'done' }])
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
+
+  it('chatOnce 外部 signal 已中止时返回 null 且 fetch 收到 abort', async () => {
+    let receivedSignal: AbortSignal | null | undefined
+    const fetchMock = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      receivedSignal = init.signal as AbortSignal
+      return Promise.reject(new DOMException('aborted', 'AbortError'))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const { chatOnce } = await importClient({ LLM_BASE_URL: BASE, LLM_API_KEY: KEY, LLM_MODEL: 'm' })
+    const ctrl = new AbortController()
+    ctrl.abort()
+    expect(await chatOnce({ messages: [{ role: 'user', content: 'hi' }], signal: ctrl.signal })).toBeNull()
+    expect(receivedSignal?.aborted).toBe(true)
+  })
+
+  it('chatStream 外部 signal 已中止时事件流恰含一个 done', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new DOMException('aborted', 'AbortError'))
+    vi.stubGlobal('fetch', fetchMock)
+    const { chatStream } = await importClient({ LLM_BASE_URL: BASE, LLM_API_KEY: KEY, LLM_MODEL: 'm' })
+    const ctrl = new AbortController()
+    ctrl.abort()
+    const events: { type: string }[] = []
+    for await (const ev of chatStream({ messages: [{ role: 'user', content: 'hi' }], signal: ctrl.signal })) {
+      events.push(ev)
+    }
+    expect(events).toEqual([{ type: 'done' }])
+  })
+
+  it('chatOnce 第 1 次 JSON 失败第 2 次成功 → 返回成功结果且 fetch 恰调 2 次', async () => {
+    const bad = new Response('not-json{', { status: 200 })
+    const fetchMock = vi.fn().mockResolvedValueOnce(bad).mockResolvedValueOnce(jsonResponse(okPayload))
+    vi.stubGlobal('fetch', fetchMock)
+    const { chatOnce } = await importClient({ LLM_BASE_URL: BASE, LLM_API_KEY: KEY, LLM_MODEL: 'm' })
+    const result = await chatOnce({ messages: [{ role: 'user', content: 'hi' }] })
+    expect(result?.content).toBe('你好')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('chatStream 流 EOF 未收到 [DONE] 时恰含一个 done', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { chatStream } = await importClient({ LLM_BASE_URL: BASE, LLM_API_KEY: KEY, LLM_MODEL: 'm' })
+    const events: { type: string }[] = []
+    for await (const ev of chatStream({ messages: [{ role: 'user', content: 'hi' }] })) {
+      events.push(ev)
+    }
+    expect(events).toEqual([{ type: 'done' }])
+  })
+
+  it('chatStream 请求体 stream 为 true', async () => {
+    const sse = 'data: [DONE]\n\n'
+    const fetchMock = vi.fn().mockResolvedValue(new Response(sse, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { chatStream } = await importClient({ LLM_BASE_URL: BASE, LLM_API_KEY: KEY, LLM_MODEL: 'm' })
+    for await (const _ev of chatStream({ messages: [{ role: 'user', content: 'hi' }] })) { /* drain */ }
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+    expect(body.stream).toBe(true)
+  })
 })
