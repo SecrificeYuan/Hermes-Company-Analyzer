@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Search } from 'lucide-react'
 import type { ListedCompany } from '@/lib/data/eastmoney'
 
@@ -10,7 +11,9 @@ type Status = 'idle' | 'loading' | 'ready' | 'unavailable'
 
 /**
  * 通用公司搜索输入：/api/suggest 联想下拉，选中回调完整公司。
- * 与首页 SearchBox 同套接口，样式收敛为单行输入，供对比页等复用。
+ * 与首页 SearchBox 同套接口。下拉用 portal 挂到 body：
+ * 父级 glass-card 的 backdrop-blur 会创建层叠上下文，困住内部 z-index，
+ * 导致下方带动画的卡片盖住下拉。
  */
 export function CompanySearchInput({
   placeholder = '公司名称或股票代码…',
@@ -26,7 +29,9 @@ export function CompanySearchInput({
   const [items, setItems] = useState<ListedCompany[]>([])
   const [active, setActive] = useState(-1)
   const [status, setStatus] = useState<Status>('idle')
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const q = query.trim()
@@ -65,6 +70,23 @@ export function CompanySearchInput({
     }
   }, [query])
 
+  // 下拉定位：跟随输入框（fixed 坐标），滚动/缩放时重算
+  useEffect(() => {
+    if (!open) return
+    const update = () => {
+      const rect = wrapRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setMenuPos({ top: rect.bottom + 8, left: rect.left, width: rect.width })
+    }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [open])
+
   const pick = (company: ListedCompany) => {
     onPick(company)
     setQuery('')
@@ -98,7 +120,7 @@ export function CompanySearchInput({
         : null
 
   return (
-    <div className="relative w-64">
+    <div ref={wrapRef} className="relative w-64">
       <div className="flex items-center gap-2 rounded-btn border border-neon/30 bg-ink-card px-3 py-2">
         <Search className="h-4 w-4 shrink-0 text-neon/70" />
         <input
@@ -115,26 +137,31 @@ export function CompanySearchInput({
         />
       </div>
 
-      {open && (
-        <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-80 overflow-y-auto rounded-card border border-ink-edge bg-ink-card shadow-xl">
-          {items.map((c, i) => (
-            <button
-              key={c.id}
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                pick(c)
-              }}
-              onMouseEnter={() => setActive(i)}
-              className={`flex w-full items-center gap-3 px-4 py-2.5 text-left ${i === active ? 'bg-white/5' : ''} ${i > 0 ? 'border-t border-ink-edge' : ''}`}
-            >
-              <span className="flex-1 truncate font-semibold text-slate-100">{c.name}</span>
-              <span className="font-mono text-xs text-slate-500">{c.stockCode}</span>
-            </button>
-          ))}
-          {hint && <div className="px-4 py-2.5 text-center font-mono text-xs text-slate-500">{hint}</div>}
-        </div>
-      )}
+      {open && menuPos &&
+        createPortal(
+          <div
+            style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width }}
+            className="fixed z-[100] max-h-80 overflow-y-auto rounded-card border border-ink-edge bg-ink-card shadow-xl"
+          >
+            {items.map((c, i) => (
+              <button
+                key={c.id}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  pick(c)
+                }}
+                onMouseEnter={() => setActive(i)}
+                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left ${i === active ? 'bg-white/5' : ''} ${i > 0 ? 'border-t border-ink-edge' : ''}`}
+              >
+                <span className="flex-1 truncate font-semibold text-slate-100">{c.name}</span>
+                <span className="font-mono text-xs text-slate-500">{c.stockCode}</span>
+              </button>
+            ))}
+            {hint && <div className="px-4 py-2.5 text-center font-mono text-xs text-slate-500">{hint}</div>}
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }

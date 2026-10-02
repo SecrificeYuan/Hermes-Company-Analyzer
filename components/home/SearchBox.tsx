@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Crosshair, Search } from 'lucide-react'
 import type { ListedCompany } from '@/lib/data/eastmoney'
 
@@ -15,7 +16,9 @@ export function SearchBox({ onPick }: { onPick: (company: ListedCompany) => void
   const [items, setItems] = useState<ListedCompany[]>([])
   const [active, setActive] = useState(-1)
   const [status, setStatus] = useState<Status>('idle')
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const q = query.trim()
@@ -53,6 +56,23 @@ export function SearchBox({ onPick }: { onPick: (company: ListedCompany) => void
       ctrl.abort()
     }
   }, [query])
+
+  // 下拉定位：portal 到 body，跟随输入框（fixed 坐标）
+  useEffect(() => {
+    if (!open) return
+    const update = () => {
+      const rect = wrapRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setMenuPos({ top: rect.bottom + 8, left: rect.left, width: rect.width })
+    }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [open])
 
   const pick = (company: ListedCompany) => {
     onPick(company)
@@ -105,7 +125,7 @@ export function SearchBox({ onPick }: { onPick: (company: ListedCompany) => void
         : null
 
   return (
-    <div className="relative w-full max-w-xl">
+    <div ref={wrapRef} className="relative w-full max-w-xl">
       <div className="glass-card flex items-center gap-3 px-5 py-4">
         <Search className="h-5 w-5 text-neon" />
         <input
@@ -129,29 +149,34 @@ export function SearchBox({ onPick }: { onPick: (company: ListedCompany) => void
         </button>
       </div>
 
-      {open && (
-        <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-80 overflow-y-auto rounded-card border border-ink-edge bg-ink-card shadow-xl">
-          {items.map((c, i) => (
-            <button
-              key={c.id}
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                pick(c)
-              }}
-              onMouseEnter={() => setActive(i)}
-              className={`flex w-full items-center gap-3 px-5 py-3 text-left ${i === active ? 'bg-white/5' : ''} ${i > 0 ? 'border-t border-ink-edge' : ''}`}
-            >
-              <span className="flex-1 font-semibold text-slate-100">{c.name}</span>
-              <span className="font-mono text-xs text-slate-500">{c.stockCode}</span>
-            </button>
-          ))}
-          {hint && <div className="px-5 py-3 text-center font-mono text-xs text-slate-500">{hint}</div>}
-          {!hint && status === 'ready' && items.length === 0 && (
-            <div className="px-5 py-3 text-center font-mono text-xs text-slate-500">无匹配候选</div>
-          )}
-        </div>
-      )}
+      {open && menuPos &&
+        createPortal(
+          <div
+            style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width }}
+            className="fixed z-[100] max-h-80 overflow-y-auto rounded-card border border-ink-edge bg-ink-card shadow-xl"
+          >
+            {items.map((c, i) => (
+              <button
+                key={c.id}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  pick(c)
+                }}
+                onMouseEnter={() => setActive(i)}
+                className={`flex w-full items-center gap-3 px-5 py-3 text-left ${i === active ? 'bg-white/5' : ''} ${i > 0 ? 'border-t border-ink-edge' : ''}`}
+              >
+                <span className="flex-1 font-semibold text-slate-100">{c.name}</span>
+                <span className="font-mono text-xs text-slate-500">{c.stockCode}</span>
+              </button>
+            ))}
+            {hint && <div className="px-5 py-3 text-center font-mono text-xs text-slate-500">{hint}</div>}
+            {!hint && status === 'ready' && items.length === 0 && (
+              <div className="px-5 py-3 text-center font-mono text-xs text-slate-500">无匹配候选</div>
+            )}
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }
