@@ -1,7 +1,8 @@
 export interface SearchRecord {
   id: string
   name: string
-  stockCode: string
+  stockCode?: string
+  creditCode?: string
   at: number
 }
 
@@ -12,7 +13,8 @@ function isRecord(value: unknown): value is SearchRecord {
   if (typeof value !== 'object' || value === null) return false
   const r = value as Record<string, unknown>
   return typeof r.id === 'string' && typeof r.name === 'string' &&
-    typeof r.stockCode === 'string' && typeof r.at === 'number'
+    (r.stockCode === undefined || typeof r.stockCode === 'string') &&
+    (r.creditCode === undefined || typeof r.creditCode === 'string') && typeof r.at === 'number'
 }
 
 /** 读取最近搜索记录（新→旧）；SSR 或数据损坏时返回空数组 */
@@ -31,7 +33,7 @@ export function getSearchHistory(): SearchRecord[] {
 
 /** 追加一条记录：按 id 去重、新记录置顶、最多保留 3 条；返回更新后的列表 */
 export function addSearchHistory(company: Omit<SearchRecord, 'at'>): SearchRecord[] {
-  const record: SearchRecord = { ...company, at: Date.now() }
+  const record: SearchRecord = { id: company.id, name: company.name, stockCode: company.stockCode, creditCode: company.creditCode, at: Date.now() }
   const rest = getSearchHistory().filter((r) => r.id !== record.id)
   const next = [record, ...rest].slice(0, MAX_RECORDS)
   if (typeof window !== 'undefined') {

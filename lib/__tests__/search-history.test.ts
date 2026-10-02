@@ -8,6 +8,11 @@ describe('search history', () => {
     window.localStorage.clear()
   })
 
+  it('支持没有股票代码的企业', () => {
+    addSearchHistory({ id: 'web_example', name: '示例科技有限公司' })
+    expect(getSearchHistory()[0]).toMatchObject({ id: 'web_example', name: '示例科技有限公司' })
+  })
+
   it('空存储返回空数组', () => {
     expect(getSearchHistory()).toEqual([])
   })

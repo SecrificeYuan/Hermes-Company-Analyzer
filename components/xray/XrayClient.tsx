@@ -33,6 +33,7 @@ import type { DetailSectionId, GlanceSlot } from '@/lib/narrative'
 import { useMode } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay, NarrativeKey } from '@/lib/types'
+import type { CompanyHealth } from '@/lib/company'
 
 const rise = {
   hidden: { opacity: 0, y: 20 },
@@ -60,19 +61,21 @@ function slotTitle(slot: GlanceSlot, terms: ReturnType<typeof getTerms>): string
 }
 
 /** 报告页客户端容器：头（版式无关）→ 速览层（版式驱动）→ 详读层（双密度，规格 §3） */
-export function XrayClient({ xray }: { xray: CompanyXRay }) {
+export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: CompanyHealth }) {
   const mode = useMode()
   const terms = getTerms(mode)
   const narrative = narrativeOf(xray)
-  const layout = glanceLayout(xray, narrative)
+  const layout = health
+    ? { c: 'radar' as const, rest: ['finance', 'equity', 'legal', 'sentiment', 'network'] as GlanceSlot[] }
+    : glanceLayout(xray, narrative)
   const order = detailOrder(layout)
 
   const proCharts: Record<GlanceSlot, ReactNode> = {
-    finance: <CashFlowChart hp={xray.hp} height={280} />,
-    equity: <PledgeSummary xray={xray} />,
-    legal: <LawsuitHeatmap timeline={xray.timeline} height={280} />,
-    sentiment: <SentimentCurve morale={xray.morale} height={280} />,
-    network: <RelationGraph graph={xray.graph} height={280} />,
+    finance: health && !health.years.length ? <MissingMetric label="完整年度财报" /> : <CashFlowChart hp={xray.hp} height={280} />,
+    equity: health && health.metrics.pledgeRatio === null ? <MissingMetric label="股权质押" /> : <PledgeSummary xray={xray} />,
+    legal: health && health.metrics.lawsuitAnnouncements === null ? <MissingMetric label="司法记录" /> : <LawsuitHeatmap timeline={xray.timeline} height={280} />,
+    sentiment: health ? <MissingMetric label="可核实的舆情记录" /> : <SentimentCurve morale={xray.morale} height={280} />,
+    network: health ? <MissingMetric label="关联网络" /> : <RelationGraph graph={xray.graph} height={280} />,
   }
 
   return (
@@ -86,17 +89,17 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
           <Button asChild variant="ghost" size="sm">
             <Link href="/compare"><GitCompareArrows /> 双公司对比</Link>
           </Button>
-          <ShareCard xray={xray} />
+          {!health && <ShareCard xray={xray} />}
         </div>
       </div>
 
       {/* 头：LITE 角色横幅 / PRO 元信息条 */}
       <motion.div variants={rise} custom={0} initial="hidden" animate="show">
-        {mode === 'pro' ? <MetaStrip xray={xray} /> : <CharacterCard xray={xray} />}
+        {mode === 'pro' ? <MetaStrip xray={xray} health={health} /> : <CharacterCard xray={xray} health={health} />}
       </motion.div>
 
       {/* 行情与资金区（PRO 专属） */}
-      {mode === 'pro' && (
+      {mode === 'pro' && !health && (
         <motion.div variants={rise} custom={0.5} initial="hidden" animate="show" className="mt-6">
           <MarketZone xray={xray} />
         </motion.div>
@@ -116,7 +119,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
                 </CardHeader>
                 <CardContent>
                   {layout.c === 'radar'
-                    ? <AttributeRadar xray={xray} height={560} />
+                    ? health ? <MissingEvidencePanel health={health} /> : <AttributeRadar xray={xray} height={560} />
                     : proCharts[layout.c]}
                 </CardContent>
               </Card>
@@ -131,7 +134,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
             ))}
             {/* 右下角补位：AI 速览入口（方案 C） */}
             <motion.div variants={rise} custom={2 + layout.rest.length} initial="hidden" animate="show" className="h-full">
-              <AiGlanceCard xray={xray} />
+              {health ? <Card className="h-full"><CardHeader><CardTitle>AI 速览</CardTitle></CardHeader><CardContent><MissingMetric label="AI 分析所需证据" /></CardContent></Card> : <AiGlanceCard xray={xray} />}
             </motion.div>
           </div>
         ) : (
@@ -141,7 +144,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
               {layout.c === 'radar' ? (
                 <Card className="h-full">
                   <CardHeader><CardTitle>{terms.cardTitles.radar}</CardTitle></CardHeader>
-                  <CardContent><AttributeRadar xray={xray} height={380} /></CardContent>
+                  <CardContent>{health ? <MissingEvidencePanel health={health} /> : <AttributeRadar xray={xray} height={380} />}</CardContent>
                 </Card>
               ) : (
                 <NarrativeCard id="glance-c" k={SLOT_KEY[layout.c]} xray={xray} />
@@ -152,7 +155,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
               .slice(0, 3)
               .map((slot, i) => (
                 <motion.div key={slot} variants={rise} custom={2 + i} initial="hidden" animate="show">
-                  <MiniDimCard id={`glance-${slot}`} k={SLOT_KEY[slot]} xray={xray} />
+                  {health ? <Card className="h-full"><CardHeader><CardTitle>{slotTitle(slot, terms)}</CardTitle></CardHeader><CardContent>{proCharts[slot]}</CardContent></Card> : <MiniDimCard id={`glance-${slot}`} k={SLOT_KEY[slot]} xray={xray} />}
                 </motion.div>
               ))}
           </div>
@@ -171,7 +174,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
             <div className="min-w-0 space-y-6">
               {order.map((id) => (
                 <SectionShell key={id} id={id} title={terms.sections[id]}>
-                  <SectionBody id={id} xray={xray} />
+                  <SectionBody id={id} xray={xray} health={health} />
                 </SectionShell>
               ))}
             </div>
@@ -180,11 +183,13 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
           <div className="grid gap-6 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
             {order.map((id) => {
               const k = LITE_SECTION_KEY[id]
-              return k ? <NarrativeCard key={id} id={`detail-${id}`} k={k} xray={xray} /> : null
+              return k ? health ? <SectionShell key={id} id={`detail-${id}`} title={terms.sections[id]}><SectionBody id={id} xray={xray} health={health} /></SectionShell> : <NarrativeCard key={id} id={`detail-${id}`} k={k} xray={xray} /> : null
             })}
           </div>
         )}
       </div>
+
+      {health && mode === 'lite' && <div className="mt-8"><SectionShell id="evidence" title="来源与资料缺口"><MissingEvidencePanel health={health} /></SectionShell></div>}
 
       <footer className="mt-10 text-center font-mono text-[11px] text-slate-600">
         HERMES · 所有结论均可点开证据溯源 · 数据仅供演示，不构成投资建议
@@ -196,7 +201,14 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
 }
 
 /** PRO section 内容（顺序由 detailOrder 版式传导） */
-function SectionBody({ id, xray }: { id: DetailSectionId; xray: CompanyXRay }) {
+function SectionBody({ id, xray, health }: { id: DetailSectionId; xray: CompanyXRay; health?: CompanyHealth }) {
+  if (health && id === 'evidence') return <MissingEvidencePanel health={health} />
+  if (health && id === 'financial') return health.years.length ? <FinancialSection xray={xray} health={health} /> : <MissingMetric label="该企业的完整年度财务报表" />
+  if (health && id === 'equity') return <MissingMetric label="该企业的完整股权结构与控制关系" />
+  if (health && id === 'legal') return <MissingMetric label="该企业的完整司法与执行记录" />
+  if (health && id === 'sentiment') return <MissingMetric label="可核实的舆情记录" />
+  if (health && id === 'network') return <MissingMetric label="关联实体与控制关系" />
+  if (health && id === 'ai') return <MissingMetric label="足够支撑 AI 分析的证据" />
   switch (id) {
     case 'financial': return <FinancialSection xray={xray} />
     case 'equity': return <EquitySection xray={xray} />
@@ -206,4 +218,19 @@ function SectionBody({ id, xray }: { id: DetailSectionId; xray: CompanyXRay }) {
     case 'evidence': return <EvidenceSection xray={xray} />
     case 'ai': return <AiSection />
   }
+}
+
+function MissingMetric({ label }: { label: string }) {
+  return <p className="py-8 text-center text-sm text-slate-400">{label}待核实；缺失数据不按零风险处理。</p>
+}
+
+function MissingEvidencePanel({ health }: { health: CompanyHealth }) {
+  return <div className="space-y-4 text-sm text-slate-300">
+    <p>当前可核实的资料不足以给出完整健康评分或投资回报率。{health.company.identity === 'lead' ? '企业法律主体仍待工商登记核对。' : ''}</p>
+    <dl className="grid gap-3 sm:grid-cols-2">
+      {([['统一社会信用代码线索', health.company.creditCode], ['注册地区', health.company.region], ['行业', health.company.industry], ['成立日期', health.company.foundedAt], ['公司简介', health.company.description]] as const).map(([label, value]) => <div key={label} className="border-b border-edge pb-2"><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 break-words">{value || '待核实'}</dd></div>)}
+    </dl>
+    <p className="text-xs text-warn">待补充：{health.gaps.join('；')}</p>
+    {health.sources.map((source, index) => <p key={`${source.url}-${index}`}><a href={source.url} target="_blank" rel="noopener noreferrer" className="text-neon hover:underline">{source.title}</a> · {source.state === 'ok' ? '已读取' : source.state === 'empty' ? '无匹配' : '访问受限或暂不可用'}<span className="block text-xs text-slate-500">{source.note}</span></p>)}
+  </div>
 }

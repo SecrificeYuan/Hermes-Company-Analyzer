@@ -1,5 +1,10 @@
 # DOC-B · 公司分析引擎（分支 `feat/analysis-engine`）
 
+> 2026-10-02 更新：首页搜索、条件筛选与 `/report/[id]` 已切换为公开企业健康评估流程，
+> 新契约为 `lib/company.ts` 的 `CompanyIdentity` / `CompanyHealth`；旧 `CompanyXRay` 用于原有对比接口。
+> 数据来源、匹配语义与覆盖限制以 [PUBLIC-COMPANY-DATA.md](PUBLIC-COMPANY-DATA.md) 为准。
+
+
 > **你的职责：** 把 `RawCompanyData` 变成 `CompanyXRay`。你是产品的"大脑"——所有游戏化结论都出自你的函数。
 > **铁律：** `lib/analysis` 是**纯函数层**，不 import 任何网络/fs 模块；输入输出只认 [lib/types.ts](../lib/types.ts)。
 

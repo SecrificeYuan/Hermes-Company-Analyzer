@@ -1,157 +1,114 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Crosshair, Search } from 'lucide-react'
-import type { ListedCompany } from '@/lib/data/eastmoney'
+import { Search, LoaderCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { listingLabels, type CompanyIdentity, type CompanySearchResult } from '@/lib/company'
 
-const DEBOUNCE_MS = 300
-
-type Status = 'idle' | 'loading' | 'ready' | 'unavailable' | 'notfound'
-
-/** 首页搜索框：输入联想候选下拉（/api/suggest），回车精确解析（/api/search） */
-export function SearchBox({ onPick }: { onPick: (company: ListedCompany) => void }) {
+export function SearchBox({ onPick }: { onPick: (company: CompanyIdentity) => void }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
-  const [items, setItems] = useState<ListedCompany[]>([])
+  const [items, setItems] = useState<CompanyIdentity[]>([])
   const [active, setActive] = useState(-1)
-  const [status, setStatus] = useState<Status>('idle')
+  const [loading, setLoading] = useState(false)
+  const [hint, setHint] = useState('')
   const abortRef = useRef<AbortController | null>(null)
-
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
-    const q = query.trim()
-    abortRef.current?.abort()
-    if (!q) {
-      setItems([])
-      setOpen(false)
-      setStatus('idle')
-      setActive(-1)
-      return
+    const closeOutside = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
     }
-    setStatus('loading')
-    const ctrl = new AbortController()
-    abortRef.current = ctrl
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/suggest?q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
-        if (!res.ok) throw new Error(String(res.status))
-        const data = (await res.json()) as { suggestions: ListedCompany[] }
-        if (ctrl.signal.aborted) return
-        setItems(data.suggestions)
-        setActive(data.suggestions.length > 0 ? 0 : -1)
-        setOpen(true)
-        setStatus('ready')
-      } catch (e) {
-        if (ctrl.signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return
-        setItems([])
-        setActive(-1)
-        setOpen(true)
-        setStatus('unavailable')
-      }
-    }, DEBOUNCE_MS)
-    return () => {
-      clearTimeout(timer)
-      ctrl.abort()
-    }
-  }, [query])
+    document.addEventListener('pointerdown', closeOutside)
+    return () => document.removeEventListener('pointerdown', closeOutside)
+  }, [])
 
-  const pick = (company: ListedCompany) => {
-    onPick(company)
-    setQuery('')
+  const pick = (company: CompanyIdentity) => {
+    abortRef.current?.abort()
+    if (timerRef.current) clearTimeout(timerRef.current)
     setOpen(false)
+    setQuery('')
+    setItems([])
+    onPick(company)
+  }
+  const run = async (q: string, exact: boolean) => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    setLoading(true)
+    setOpen(true)
+    setHint('正在查询公开网页和企业披露…')
+    try {
+      const res = await fetch(`/api/${exact ? 'search' : 'suggest'}?q=${encodeURIComponent(q)}`, { signal: controller.signal })
+      const data = await res.json() as CompanySearchResult & { company?: CompanyIdentity; found?: boolean; error?: string }
+      if (!res.ok) throw new Error(data.error ?? '公开数据源暂不可用，请稍后重试')
+      if (controller.signal.aborted) return
+      if (exact && data.found && data.company) { pick(data.company); return }
+      setItems(data.suggestions)
+      setActive(-1)
+      const unavailable = data.sources.some((s) => s.state === 'blocked' || s.state === 'unavailable')
+      setHint(data.suggestions.length ? '请选择准确主体；同名企业请核对地区、信用代码与来源。' : unavailable ? '部分来源暂不可用，未能确认该企业。可稍后重试。' : '暂无可核实结果，请尝试完整公司名称、信用代码或股票代码。')
+    } catch (error) {
+      if (!controller.signal.aborted) { setItems([]); setHint(error instanceof Error ? error.message : '检索失败，请重试') }
+    } finally { if (!controller.signal.aborted) setLoading(false) }
+  }
+  useEffect(() => {
+    abortRef.current?.abort()
     setItems([])
     setActive(-1)
-    setStatus('idle')
+    if (query.trim().length < 2) { setLoading(false); setOpen(false); return }
+    timerRef.current = setTimeout(() => void run(query.trim(), false), 500)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); abortRef.current?.abort() }
+    // run only reads the supplied query; it creates a fresh cancellable request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query])
+
+  const submit = () => {
+    if (query.trim().length < 2) return
+    if (timerRef.current) clearTimeout(timerRef.current)
+    void run(query.trim(), true)
   }
-
-  const submitExact = async () => {
-    const q = query.trim()
-    if (!q) return
-    try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
-      const data = (await res.json()) as { found: boolean; company?: ListedCompany }
-      if (data.found && data.company) pick(data.company)
-      else {
-        setOpen(true)
-        setStatus('notfound')
-      }
-    } catch {
-      setOpen(true)
-      setStatus('unavailable')
-    }
-  }
-
-  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setOpen(true)
-      setActive((a) => Math.min(a + 1, items.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setActive((a) => Math.max(a - 1, 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      if (open && active >= 0 && items[active]) pick(items[active])
-      else submitExact()
-    } else if (e.key === 'Escape') {
-      setOpen(false)
-    }
-  }
-
-  const hint =
-    status === 'unavailable'
-      ? '数据源暂不可用，请稍后再试'
-      : status === 'notfound'
-        ? '未找到该公司 —— 试试完整公司名或 6 位股票代码'
-        : null
-
   return (
-    <div className="relative w-full max-w-xl">
-      <div className="glass-card flex items-center gap-3 px-5 py-4">
-        <Search className="h-5 w-5 text-neon" />
+    <div ref={containerRef} className="relative w-full max-w-xl">
+      <div className="glass-card flex items-center gap-3 px-4 py-3">
+        <Search className="h-5 w-5 shrink-0 text-neon" />
         <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={onKeyDown}
-          onFocus={() => {
-            if (items.length > 0) setOpen(true)
+          aria-label="搜索公司" role="combobox" aria-expanded={open} aria-controls="company-options"
+          aria-autocomplete="list" aria-activedescendant={active >= 0 ? `company-option-${active}` : undefined}
+          value={query} maxLength={80} onChange={(event) => setQuery(event.target.value)}
+          onFocus={() => { if (items.length || hint) setOpen(true) }}
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) return
+            if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setActive((a) => Math.min(a + 1, items.length - 1)) }
+            else if (event.key === 'ArrowUp') { event.preventDefault(); setActive((a) => Math.max(a - 1, 0)) }
+            else if (event.key === 'Escape') setOpen(false)
+            else if (event.key === 'Enter') { event.preventDefault(); if (open && active >= 0 && items[active]) pick(items[active]); else submit() }
           }}
-          onBlur={() => setTimeout(() => setOpen(false), 120)}
-          placeholder="输入公司名称或股票代码…"
-          className="w-full bg-transparent font-mono text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+          placeholder="公司名称 / 信用代码 / 股票代码"
+          className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
         />
-        <Crosshair className="h-4 w-4 animate-blink text-neon/60" />
-        <button
-          type="button"
-          onClick={() => void submitExact()}
-          className="font-mono text-[11px] tracking-wider text-neon hover:underline"
-        >
-          SCAN ⏎
-        </button>
+        <Button type="button" variant="ghost" size="sm" onClick={submit} disabled={query.trim().length < 2 || loading}>
+          {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : '搜索'}
+        </Button>
       </div>
-
       {open && (
-        <div className="glass-card absolute inset-x-0 top-full z-30 mt-2 overflow-hidden">
-          {items.map((c, i) => (
-            <button
-              key={c.id}
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                pick(c)
-              }}
-              onMouseEnter={() => setActive(i)}
-              className={`flex w-full items-center gap-3 px-5 py-3 text-left ${i === active ? 'bg-white/5' : ''} ${i > 0 ? 'border-t border-ink-edge' : ''}`}
-            >
-              <span className="flex-1 font-semibold text-slate-100">{c.name}</span>
-              <span className="font-mono text-xs text-slate-500">{c.stockCode}</span>
-            </button>
-          ))}
-          {hint && <div className="px-5 py-3 text-center font-mono text-xs text-slate-500">{hint}</div>}
-          {!hint && status === 'ready' && items.length === 0 && (
-            <div className="px-5 py-3 text-center font-mono text-xs text-slate-500">无匹配候选</div>
-          )}
+        <div className="glass-card absolute inset-x-0 top-full z-30 mt-2 max-h-96 overflow-y-auto bg-[#101625]">
+          <div role="listbox" id="company-options" aria-label="企业主体">
+            {items.map((company, index) => (
+              <button key={company.id} id={`company-option-${index}`} role="option" aria-selected={index === active} type="button"
+                onMouseDown={(event) => { event.preventDefault(); pick(company) }} onClick={() => pick(company)} onMouseEnter={() => setActive(index)}
+                className={`block w-full border-b border-ink-edge px-5 py-3 text-left ${index === active ? 'bg-white/5' : ''}`}>
+                <span className="block text-sm font-semibold text-slate-100">{company.fullName ?? company.name}</span>
+                {company.fullName && company.name !== company.fullName && <span className="mt-1 block text-xs text-slate-400">来源实体名称：{company.name}</span>}
+                <span className="mt-1 block text-xs leading-relaxed text-slate-400">{listingLabels[company.listing]} · {company.stockCode ?? company.creditCode ?? '信用代码待核实'}</span>
+                <span className="mt-1 block truncate text-xs text-slate-500">{company.region || new URL(company.sources[0]?.url ?? 'https://www.eastmoney.com').hostname} · {company.identity === 'verified' ? '页面主体已核对' : '检索线索，主体待核实'}</span>
+              </button>
+            ))}
+          </div>
+          <p role="status" className="px-5 py-3 text-xs leading-relaxed text-slate-400">{hint}</p>
         </div>
       )}
+      <p className="mt-3 text-center text-xs text-slate-500">覆盖上市与未上市企业 · 公开资料不足时明确标注</p>
     </div>
   )
 }
