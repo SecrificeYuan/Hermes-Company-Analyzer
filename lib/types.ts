@@ -250,6 +250,15 @@ export interface CompanyXRay {
    *  数据来源状态，前端用于展示"数据来源/降级"角标。 */
   sources?: DataSourceStatus[]
 
+  /** LLM 行动建议（可选）：亮灯后的「下一步」清单，失败时不存在（UI 回退模板 advice）。 */
+  nextSteps?: {
+    scenario: string // 意图场景，如「买理财」
+    items: string[] // 3–5 条行动项
+    caveat: string // 诚实标注，如「历史不代表未来」
+    generatedAt: string
+    model: string
+  }
+
   /** v1.3 增量字段（可选）：PRO 详读层表格消费的明细切片，由 analyze() 从 raw 透传，不做计算。 */
   detail?: {
     financialYears: FinancialYear[]
