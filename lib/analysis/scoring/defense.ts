@@ -17,6 +17,10 @@ export function extractPledgeRatio(people: RawCompanyData['people']): number {
 export function scoreDefense(raw: RawCompanyData): CompanyXRay['def'] {
   const pledgeRatio = extractPledgeRatio(raw.people)
   const years = raw.financial?.years ?? []
+  // 财务和股权事件都缺失时，不能把“未知”当作“零负债、零质押”。
+  if (years.length === 0 && raw.people === undefined) {
+    return { score: 50, label: '数据不足', pledgeRatio: 0, assetCoverage: 0 }
+  }
   const debtRatio = years.length > 0 ? years[years.length - 1].debtRatio : 0
   const highDebtPenalty = debtRatio > 70 ? (debtRatio - 70) * 1.5 : 0
 

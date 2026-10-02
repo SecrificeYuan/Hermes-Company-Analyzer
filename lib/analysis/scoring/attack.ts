@@ -7,6 +7,10 @@ const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v))
  * 注意语义：ATK 越高代表法律战火越旺，是风险信号而非褒义。
  */
 export function scoreAttack(legal: RawCompanyData['legal']): CompanyXRay['atk'] {
+  // 没有司法切片不等于“没有纠纷”，用中性分并明确标示数据状态。
+  if (!legal) {
+    return { score: 50, label: '数据不足', lawsuitCount: 0, executionAmount: 0 }
+  }
   const lawsuitCount = legal?.lawsuits.length ?? 0
   const executionAmount = (legal?.executions ?? []).reduce((sum, e) => sum + e.amount, 0)
 
