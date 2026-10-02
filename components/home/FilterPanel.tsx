@@ -210,7 +210,7 @@ export function FilterPanel() {
   }
 
   return (
-    <section aria-label="条件筛选" className="w-full max-w-3xl rounded-btn border border-ink-edge bg-[#101625]">
+    <section aria-label="条件筛选" className="relative z-10 w-full max-w-3xl rounded-btn border border-ink-edge bg-[#101625]/95 transition-colors duration-200 hover:z-30 hover:bg-[#101625] hover:shadow-2xl">
       <div className="flex flex-col gap-4 border-b border-ink-edge px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
         <div className="inline-grid w-full grid-cols-2 rounded-btn bg-[#0b1020] p-1 sm:w-auto" role="tablist" aria-label="筛选模式">
           <button
