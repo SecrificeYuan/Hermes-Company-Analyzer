@@ -5,10 +5,24 @@
     "name": "恒晟地产",
     "stockCode": "8808.HK",
     "industry": "房地产开发",
+    "registry": {
+      "fullName": "恒晟地产集团有限公司",
+      "creditCode": "91330100MA2B7X9K3Q",
+      "foundedAt": "1998-06-12",
+      "registeredCapital": 156000
+    },
     "fetchedAt": "2026-10-01T09:00:00+08:00",
     "sources": [
       { "name": "mock", "ok": true, "latencyMs": 11, "fallback": false }
     ]
+  },
+  "llm": {
+    "summary": "恒晟地产处于典型的债务-质押双杀局面：销售回款枯竭、债务逾期扩大，控股股东高比例质押已触发平仓预警，短期风险极高。",
+    "sectionNotes": {
+      "def": "大股东已经把股票押到极限了——再多押一股都没有了。"
+    },
+    "generatedAt": "2026-10-01T09:30:00+08:00",
+    "model": "hermes-llm-reserved"
   },
   "financial": {
     "years": [

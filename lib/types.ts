@@ -74,6 +74,25 @@ export interface PersonEvent {
   amount?: number
 }
 
+export type NarrativeType = 'debt' | 'pledge' | 'lawsuit' | 'sentiment' | 'balanced'
+
+export type NarrativeKey = 'hp' | 'def' | 'atk' | 'morale' | 'network'
+
+export interface RegistryInfo {
+  fullName: string // 公司全称
+  creditCode: string // 统一社会信用代码
+  foundedAt: string // 成立日期 YYYY-MM-DD
+  registeredCapital: number // 注册资本，万元
+}
+
+/** LLM 解读（v1.1 预留可选）：数据归引擎，解读归 AI */
+export interface LlmSummary {
+  summary: string // 全报告摘要 → PRO「AI 分析」section
+  sectionNotes?: Partial<Record<NarrativeKey, string>> // 各维度解读 → LITE 叙事卡文案源
+  generatedAt: string // ISO 时间
+  model: string // 模型标识
+}
+
 export interface RawCompanyData {
   meta: {
     id: string
@@ -81,6 +100,7 @@ export interface RawCompanyData {
     stockCode?: string
     industry: string
     fetchedAt: string // ISO 时间；分析引擎以它为"当下"计算近 N 天窗口
+    registry?: RegistryInfo // 工商注册信息（v1.1 增量，可选）
     sources: DataSourceStatus[]
   }
   financial?: { years: FinancialYear[] } // 按年份升序
@@ -92,6 +112,7 @@ export interface RawCompanyData {
   }
   sentiment?: SentimentItem[] // 按日期升序
   people?: PersonEvent[]
+  llm?: LlmSummary // LLM 解读（可选），占位期由 mock 提供示例
 }
 
 // ============================================================
@@ -161,6 +182,15 @@ export interface CompanyXRay {
 
   verdict: string // "表面是科技新星，实际血条 32%…"
   advice: string // "不建议将储蓄投入"
+
+  /** 工商注册信息（v1.1 增量，可选），PRO 元信息条使用 */
+  registry?: RegistryInfo
+  /** 风险叙事版式（v1.1 预留，可选）：存在时前端直接采用，跳过本地推导 */
+  narrative?: NarrativeType
+  /** LLM 解读（可选），占位期由 mock 提供示例 */
+  llm?: LlmSummary
+  /** 分析基准时，锚定 meta.fetchedAt，保证演示可复现 */
+  asOf: string
 
   /** v1.1 增量字段（可选，不破坏 v1 消费者）：
    *  数据来源状态，前端用于展示"数据来源/降级"角标。 */
