@@ -34,10 +34,21 @@ import { useMode } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay, NarrativeKey } from '@/lib/types'
 
+/** 统一出场缓动：ease-out 长尾，避免线性/突变感 */
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
+/** 首屏（挂载即播） */
 const rise = {
   hidden: { opacity: 0, y: 20 },
-  show: (i: number) => ({ opacity: 1, y: 0, transition: { delay: 0.12 + i * 0.05, duration: 0.5 } }),
+  show: (i: number) => ({ opacity: 1, y: 0, transition: { delay: 0.1 + i * 0.06, duration: 0.55, ease: EASE } }),
 }
+
+/** 滚动进入视口时播放（只播一次，提前 80px 触发） */
+const riseInView = {
+  hidden: { opacity: 0, y: 24 },
+  show: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06, duration: 0.55, ease: EASE } }),
+}
+const viewport = { once: true, margin: '-80px' } as const
 
 /** LITE 详读层只渲染五个维度卡（证据入口在每张卡上；ai 为 PRO 专属 section） */
 const LITE_SECTION_KEY: Partial<Record<DetailSectionId, NarrativeKey>> = {
@@ -78,12 +89,13 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
     equity: <PledgeSummary xray={displayXray} />,
     legal: <LawsuitHeatmap timeline={displayXray.timeline} available={displayXray.atk.available !== false} height={280} />,
     sentiment: <SentimentCurve morale={displayXray.morale} height={280} loading={sentimentLoading} slow={sentimentSlow} message={sentiment?.message} />,
-    network: <RelationGraph graph={displayXray.graph} height={280} />,
+    network: <RelationGraph graph={displayXray.graph} centerLabel={displayXray.name} height={280} />,
   }
 
   return (
     <main className="mx-auto min-h-screen max-w-7xl px-6 py-8">
-      {/* 顶栏 */}
+      {/* 顶栏（仅 LITE；PRO 的操作已并入概要头右侧操作列） */}
+      {mode === 'lite' && (
       <div className="mb-6 flex items-center justify-between">
         <Button asChild variant="ghost" size="sm">
           <Link href="/"><ArrowLeft /> 重新扫描</Link>
@@ -95,6 +107,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
           <ShareCard xray={xray} />
         </div>
       </div>
+      )}
 
       {/* 头：PRO 元信息条；LITE 角色横幅 + 右侧五维紧凑卡竖列 */}
       {mode === 'pro' ? (
@@ -121,7 +134,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
 
       {/* 行情与资金区（PRO 专属） */}
       {mode === 'pro' && (
-        <motion.div variants={rise} custom={0.5} initial="hidden" animate="show" className="mt-6">
+        <motion.div variants={riseInView} custom={0} initial="hidden" whileInView="show" viewport={viewport} className="mt-6">
           <MarketZone
             xray={displayXray}
             sentimentLoading={sentimentLoading}
@@ -137,7 +150,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         {(
           <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
             {/* C 位：2×2 放大 */}
-            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-w-0 lg:col-span-2 lg:row-span-2">
+            <motion.div variants={riseInView} custom={0} initial="hidden" whileInView="show" viewport={viewport} className="min-w-0 lg:col-span-2 lg:row-span-2">
               <Card className="h-full">
                 <CardHeader>
                   <CardTitle>
@@ -152,7 +165,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
               </Card>
             </motion.div>
             {layout.rest.map((slot, i) => (
-              <motion.div key={slot} variants={rise} custom={2 + i} initial="hidden" animate="show">
+              <motion.div key={slot} variants={riseInView} custom={1 + i} initial="hidden" whileInView="show" viewport={viewport}>
                 <Card className="h-full">
                   <CardHeader><CardTitle>{slotTitle(slot, terms)}</CardTitle></CardHeader>
                   <CardContent>{proCharts[slot]}</CardContent>
@@ -160,7 +173,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
               </motion.div>
             ))}
             {/* 右下角补位：AI 速览入口（方案 C） */}
-            <motion.div variants={rise} custom={2 + layout.rest.length} initial="hidden" animate="show" className="h-full">
+            <motion.div variants={riseInView} custom={1 + layout.rest.length} initial="hidden" whileInView="show" viewport={viewport} className="h-full">
               <AiGlanceCard xray={displayXray} />
             </motion.div>
           </div>
@@ -176,10 +189,12 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
           <AnchorNav items={order.map((id) => ({ id, label: terms.sections[id] }))} />
           <div className="min-w-0 space-y-6">
-            {order.map((id) => (
-              <SectionShell key={id} id={id} title={terms.sections[id]}>
+            {order.map((id, i) => (
+            <motion.div key={id} variants={riseInView} custom={i} initial="hidden" whileInView="show" viewport={viewport}>
+              <SectionShell id={id} index={i + 1} title={terms.sections[id]}>
                 <SectionBody id={id} xray={displayXray} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} />
               </SectionShell>
+            </motion.div>
             ))}
           </div>
         </div>

@@ -14,11 +14,13 @@ export function EChart({
   height = 260,
   className,
   theme,
+  onReady,
 }: {
   option: echarts.EChartsOption
   height?: number
   className?: string
   theme?: Mode
+  onReady?: (chart: echarts.ECharts) => void
 }) {
   const domRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<echarts.ECharts | null>(null)
@@ -27,6 +29,7 @@ export function EChart({
     if (!domRef.current) return
     const chart = echarts.init(domRef.current)
     chartRef.current = chart
+    onReady?.(chart)
     const observer = new ResizeObserver(() => chart.resize())
     observer.observe(domRef.current)
     return () => {

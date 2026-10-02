@@ -50,7 +50,7 @@ export function ShareCard({ xray }: { xray: CompanyXRay }) {
 
   return (
     <>
-      <Button onClick={exportPng} variant="outline" disabled={busy}>
+      <Button onClick={exportPng} variant="outline" size="sm" disabled={busy}>
         <Share2 /> {busy ? '生成中…' : '生成分享卡 PNG'}
       </Button>
 
