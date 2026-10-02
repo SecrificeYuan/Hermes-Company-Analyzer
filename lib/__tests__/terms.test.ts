@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getTerms } from '@/lib/theme/terms'
+import { getTerms, LITE_BANNED_TERMS } from '@/lib/theme/terms'
 
 describe('术语字典', () => {
   it('LITE 游戏化术语', () => {
@@ -44,5 +44,42 @@ describe('术语字典', () => {
     expect(c.cardTitles.trend).toBe('趋势对比')
     expect(c.cardTitles.risk).toBe('风险事件对比')
     expect(c.llmTitle).toBe('AI 深度对比')
+  })
+})
+
+describe('重设计扩展术语', () => {
+  it('七个 section 名双模式齐备且不同', () => {
+    const lite = getTerms('lite')
+    const pro = getTerms('pro')
+    for (const k of ['financial', 'equity', 'legal', 'sentiment', 'network', 'evidence', 'ai'] as const) {
+      expect(lite.sections[k]).toBeTruthy()
+      expect(pro.sections[k]).toBeTruthy()
+      expect(lite.sections[k]).not.toBe(pro.sections[k])
+    }
+    expect(pro.sections.financial).toBe('财务详情')
+    expect(pro.sections.ai).toBe('AI 分析')
+  })
+
+  it('narrativeTitles / dimensionTitles 五键齐备', () => {
+    const lite = getTerms('lite')
+    for (const k of ['debt', 'pledge', 'lawsuit', 'sentiment', 'balanced'] as const) {
+      expect(lite.narrativeTitles[k]).toBeTruthy()
+      expect(getTerms('pro').narrativeTitles[k]).toBeTruthy()
+    }
+    for (const k of ['hp', 'def', 'atk', 'morale', 'network'] as const) {
+      expect(lite.dimensionTitles[k]).toBeTruthy()
+    }
+  })
+
+  it('LITE 文案零禁用术语（反向校验）', () => {
+    const lite = getTerms('lite')
+    const liteCopy = [
+      ...Object.values(lite.sections),
+      ...Object.values(lite.narrativeTitles),
+      ...Object.values(lite.dimensionTitles),
+    ].join('|')
+    for (const term of LITE_BANNED_TERMS) {
+      expect(liteCopy).not.toContain(term)
+    }
   })
 })

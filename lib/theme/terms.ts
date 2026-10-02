@@ -17,6 +17,10 @@ export interface Terms {
     timeline: string
     graph: string
   }
+  sections: Record<'financial' | 'equity' | 'legal' | 'sentiment' | 'network' | 'evidence' | 'ai', string>
+  metaStrip: { creditCode: string; foundedAt: string; registeredCapital: string; asOf: string; sources: string }
+  narrativeTitles: Record<'debt' | 'pledge' | 'lawsuit' | 'sentiment' | 'balanced', string>
+  dimensionTitles: Record<'hp' | 'def' | 'atk' | 'morale' | 'network', string>
   compare: CompareTerms
 }
 
@@ -55,6 +59,18 @@ const LITE: Terms = {
     timeline: '风险时间轴 · 近 12 个月',
     graph: '关系图谱',
   },
+  sections: {
+    financial: '钱袋子',
+    equity: '老板押股票',
+    legal: '官司',
+    sentiment: '口碑',
+    network: '关系网',
+    evidence: '证据与来源',
+    ai: '智能解读',
+  },
+  metaStrip: { creditCode: '信用代码', foundedAt: '成立日期', registeredCapital: '注册资本', asOf: '分析基准时', sources: '数据来源' },
+  narrativeTitles: { debt: '血量告急', pledge: '护盾告急', lawsuit: '麻烦缠身', sentiment: '人心浮动', balanced: '体征平稳' },
+  dimensionTitles: { hp: '钱袋子', def: '护盾', atk: '麻烦', morale: '口碑', network: '关系网' },
   compare: {
     title: '双公司对战',
     action: '开战',
@@ -91,6 +107,18 @@ const PRO: Terms = {
     timeline: '风险事件时间轴 · 近 12 个月',
     graph: '股权 / 关联网络',
   },
+  sections: {
+    financial: '财务详情',
+    equity: '股权与质押',
+    legal: '涉诉与执行',
+    sentiment: '舆情洞察',
+    network: '关联网络',
+    evidence: '证据溯源',
+    ai: 'AI 分析',
+  },
+  metaStrip: { creditCode: '统一社会信用代码', foundedAt: '成立日期', registeredCapital: '注册资本（万元）', asOf: '分析基准时', sources: '数据来源' },
+  narrativeTitles: { debt: '资金承压', pledge: '质押风险突出', lawsuit: '涉诉风险突出', sentiment: '舆情承压', balanced: '经营稳健' },
+  dimensionTitles: { hp: '财务健康', def: '股权质押', atk: '涉诉', morale: '舆情', network: '关联网络' },
   compare: {
     title: '双公司对比',
     action: '开始对比',
@@ -113,3 +141,8 @@ const PRO: Terms = {
 export function getTerms(mode: Mode): Terms {
   return mode === 'pro' ? PRO : LITE
 }
+
+/** LITE 界面禁用词表（专业金融术语）：LITE 渲染文案不得包含（规格 §10 反向校验） */
+export const LITE_BANNED_TERMS = [
+  '资产负债率', '流动比率', '净利润', '营业收入', '同比', '环比', 'ROE', 'PE', 'PB', '贴现', '流动性危机',
+] as const
