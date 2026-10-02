@@ -85,10 +85,28 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         </div>
       </div>
 
-      {/* 头：LITE 角色横幅 / PRO 元信息条 */}
-      <motion.div variants={rise} custom={0} initial="hidden" animate="show">
-        {mode === 'pro' ? <MetaStrip xray={xray} /> : <CharacterCard xray={xray} />}
-      </motion.div>
+      {/* 头：PRO 元信息条；LITE 角色横幅 + 右侧五维紧凑卡竖列 */}
+      {mode === 'pro' ? (
+        <motion.div variants={rise} custom={0} initial="hidden" animate="show">
+          <MetaStrip xray={xray} />
+        </motion.div>
+      ) : (
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)]">
+          <motion.div variants={rise} custom={0} initial="hidden" animate="show" className="min-w-0">
+            <CharacterCard xray={xray} />
+          </motion.div>
+          <div className="min-w-0 space-y-4">
+            {order.map((id, i) => {
+              const k = LITE_SECTION_KEY[id]
+              return k ? (
+                <motion.div key={id} variants={rise} custom={1 + i} initial="hidden" animate="show">
+                  <NarrativeCard id={`detail-${id}`} k={k} xray={xray} compact />
+                </motion.div>
+              ) : null
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 行情与资金区（PRO 专属） */}
       {mode === 'pro' && (
@@ -134,32 +152,23 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
       </div>
       )}
 
-      {/* 维度层（规格 §3.4）：LITE 把速览与详读合并为一张三列网格，顺序沿用 narrative 传导 */}
+      {/* 维度层（规格 §3.4）：仅 PRO；LITE 的维度卡已并入上方横幅右侧竖列 */}
+      {mode === 'pro' && (
       <div className="mt-10">
-        <h2 className="mb-4 font-mono text-xs tracking-[0.3em] text-slate-500">
-          {mode === 'pro' ? 'DETAIL REPORT' : '五个维度 · 慢慢看'}
-        </h2>
+        <h2 className="mb-4 font-mono text-xs tracking-[0.3em] text-slate-500">DETAIL REPORT</h2>
 
-        {mode === 'pro' ? (
-          <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
-            <AnchorNav items={order.map((id) => ({ id, label: terms.sections[id] }))} />
-            <div className="min-w-0 space-y-6">
-              {order.map((id) => (
-                <SectionShell key={id} id={id} title={terms.sections[id]}>
-                  <SectionBody id={id} xray={xray} />
-                </SectionShell>
-              ))}
-            </div>
+        <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
+          <AnchorNav items={order.map((id) => ({ id, label: terms.sections[id] }))} />
+          <div className="min-w-0 space-y-6">
+            {order.map((id) => (
+              <SectionShell key={id} id={id} title={terms.sections[id]}>
+                <SectionBody id={id} xray={xray} />
+              </SectionShell>
+            ))}
           </div>
-        ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
-            {order.map((id) => {
-              const k = LITE_SECTION_KEY[id]
-              return k ? <NarrativeCard key={id} id={`detail-${id}`} k={k} xray={xray} /> : null
-            })}
-          </div>
-        )}
+        </div>
       </div>
+      )}
 
       <footer className="mt-10 text-center font-mono text-[11px] text-slate-600">
         HERMES · 所有结论均可点开证据溯源 · 数据仅供演示，不构成投资建议
