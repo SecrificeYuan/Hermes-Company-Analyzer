@@ -4,8 +4,10 @@ import { useRef } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { CompanyXRay, Severity, TimelineEvent } from '@/lib/types'
+import { useTokens } from '@/lib/theme/use-tokens'
+import type { ThemeTokens } from '@/lib/theme'
 
-const SEV_COLOR: Record<Severity, string> = { high: '#FF3B5C', mid: '#FFB020', low: '#00E5FF' }
+const sevColor = (t: ThemeTokens): Record<Severity, string> => ({ high: t.colors.danger, mid: t.colors.warn, low: t.colors.accent })
 const CATEGORY_NAME: Record<TimelineEvent['category'], string> = {
   finance: '财务',
   legal: '司法',
@@ -16,6 +18,8 @@ const CATEGORY_NAME: Record<TimelineEvent['category'], string> = {
 /** 横向风险时间轴（可滚动）：颜色 = severity，倒序（最新在左） */
 export function RiskTimeline({ timeline }: { timeline: CompanyXRay['timeline'] }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const tokens = useTokens()
+  const SEV_COLOR = sevColor(tokens)
   const scrollBy = (dx: number) => scrollRef.current?.scrollBy({ left: dx, behavior: 'smooth' })
 
   if (timeline.length === 0) {

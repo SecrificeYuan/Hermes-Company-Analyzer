@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTokens } from '@/lib/theme/use-tokens'
+import { scoreColor } from '@/lib/theme'
 import type { CompanyXRay } from '@/lib/types'
 
 /**
@@ -66,7 +67,7 @@ export function ShareCard({ xray }: { xray: CompanyXRay }) {
               ] as const).map(([label, score]) => (
                 <div key={label}>
                   <div className="text-xs tracking-[0.3em] text-slate-500">{label}</div>
-                  <div className="mt-1 text-5xl font-bold" style={{ color: score >= 60 ? '#00E58A' : score >= 30 ? '#FFB020' : '#FF3B5C' }}>
+                  <div className="mt-1 text-5xl font-bold" style={{ color: scoreColor(t, score) }}>
                     {score}
                   </div>
                 </div>
