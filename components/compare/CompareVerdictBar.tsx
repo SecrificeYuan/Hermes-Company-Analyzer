@@ -55,7 +55,7 @@ export function CompareVerdictBar({ a, b }: { a: CompanyXRay; b: CompanyXRay }) 
         {winner ? terms.winnerTemplate.replace('{name}', winner.name) : `${terms.drawLabel} · DRAW`}
       </span>
       <span className="font-mono text-xs text-slate-400">
-        RISK {a.riskScore} : {b.riskScore}
+        {getTerms(mode).riskScoreCaption} {a.riskScore} : {b.riskScore}
       </span>
     </div>
   )
