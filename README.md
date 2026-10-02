@@ -1,6 +1,6 @@
 # Hermes · 公司 X 光机
 
-> 数据采集现已提供实时原始数据接口 `GET /api/company/<六位 A 股代码或准确简称>/raw`。
+> 数据采集现已提供实时原始数据接口 `GET /api/raw/<六位 A 股代码或准确简称>`。
 > 该接口只返回实际查到的 `RawCompanyData`，不使用 mock 或预跑快照；详见 [DOC-A](docs/DOC-A-DATA-ENGINE.md)。
 > 下方旧演示页面说明仍描述原始黑客松 UI；该 UI 尚未适配真实公司搜索。
 
@@ -79,7 +79,8 @@ npm run prefetch     # （可选）离线预跑 AKShare 财务数据，需 pytho
 │   ├── page.tsx                    # 首页：搜索 + 扫描动画
 │   ├── report/[id]/page.tsx        # X光片报告页（+ loading/not-found）
 │   ├── compare/page.tsx            # 双公司对比
-│   └── api/company/[id]/xray/      # 统一出参接口
+│   ├── api/company/[id]/xray/      # 统一出参接口
+│   └── api/raw/[id]/               # 实时原始数据接口
 ├── components/
 │   ├── scan/        ScanBeam / ScanProgress
 │   ├── xray/        CharacterCard·HealthBar·AttributeRadar·HiddenStatusList

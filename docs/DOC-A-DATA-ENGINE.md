@@ -2,11 +2,11 @@
 
 The runtime entry point is `fetchRawCompany(input)` in `lib/data/fetcher.ts`.
 It returns `RawCompanyData` from `lib/types.ts`. The HTTP endpoint is
-`GET /api/company/<stock code or exact A-share short name>/raw`.
+`GET /api/raw/<stock code or exact A-share short name>`.
 
 No mock, preset company, or pre-fetched JSON is read by this path. A company
 must be resolved through Eastmoney's live A-share suggestion API. An unknown
-name/code returns 404. If identity resolves but every source fails, `/raw`
+name/code returns 404. If identity resolves but every source fails, the endpoint
 returns 503 (`NO_VERIFIED_DATA`).
 
 ## Live sources
@@ -31,9 +31,9 @@ The optional `GDELT_API_URL` override is intended for local integration tests.
 
 ```bash
 npm run dev
-curl http://localhost:3000/api/company/600519/raw
-curl http://localhost:3000/api/company/%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0/raw
-curl http://localhost:3000/api/company/not-a-real-company/raw
+curl http://localhost:3000/api/raw/600519
+curl http://localhost:3000/api/raw/%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0
+curl http://localhost:3000/api/raw/not-a-real-company
 ```
 
 Amounts are in 10,000 CNY. Debt ratios are percentages (for example, `16.42`),
