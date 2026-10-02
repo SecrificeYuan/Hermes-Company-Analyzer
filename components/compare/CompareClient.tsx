@@ -8,7 +8,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Quote, RotateCcw, Swords } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CharacterCard } from '@/components/xray/CharacterCard'
+import { CharacterPanel } from '@/components/xray/CharacterPanel'
 import { EvidenceDrawer } from '@/components/xray/EvidenceDrawer'
 import { CompareSelector } from './CompareSelector'
 import { BattleLoading } from './BattleLoading'
@@ -185,7 +185,7 @@ function LiteArena({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
 
       <div className="mt-6 grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <motion.div initial={{ opacity: 0, x: -28 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.1 }} style={cardWrap(outcome === 'A')}>
-          <CharacterCard xray={a} />
+          <CharacterPanel xray={a} />
         </motion.div>
         <motion.div
           initial={{ opacity: 0, scale: 0.4 }}
@@ -198,7 +198,7 @@ function LiteArena({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.16 }} style={cardWrap(outcome === 'B')}>
-          <CharacterCard xray={b} />
+          <CharacterPanel xray={b} />
         </motion.div>
       </div>
 
