@@ -1,16 +1,15 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Coins, Crosshair, Megaphone, Network, Scale, Search } from 'lucide-react'
+import { Coins, History, Megaphone, Network, Scale } from 'lucide-react'
 import { NetworkBg } from '@/components/home/NetworkBg'
+import { SearchBox } from '@/components/home/SearchBox'
 import { ScanBeam } from '@/components/scan/ScanBeam'
 import { ScanProgress } from '@/components/scan/ScanProgress'
-import { Badge } from '@/components/ui/badge'
-import { filterPresets, type PresetCompany } from '@/lib/presets'
-
-const HINT_VARIANT = { 稳健白马: 'safe', 争议成长: 'warn', 高危预警: 'danger' } as const
+import { addSearchHistory, getSearchHistory, type SearchRecord } from '@/lib/search-history'
+import type { ListedCompany } from '@/lib/data/eastmoney'
 
 const CAPABILITIES = [
   { icon: Coins, label: '财务', note: '现金流与负债' },
@@ -21,14 +20,19 @@ const CAPABILITIES = [
 
 export default function HomePage() {
   const router = useRouter()
-  const [query, setQuery] = useState('')
-  const [scanning, setScanning] = useState<PresetCompany | null>(null)
+  const [history, setHistory] = useState<SearchRecord[]>(() => getSearchHistory())
+  const [scanning, setScanning] = useState<{ id: string; name: string } | null>(null)
 
-  const matches = useMemo(() => filterPresets(query), [query])
-
-  const startScan = (company: PresetCompany) => {
+  const handlePick = (company: ListedCompany) => {
     if (scanning) return
+    setHistory(addSearchHistory(company))
     setScanning(company)
+  }
+
+  const handleRescan = (record: SearchRecord) => {
+    if (scanning) return
+    setHistory(addSearchHistory(record))
+    setScanning(record)
   }
 
   return (
@@ -41,7 +45,7 @@ export default function HomePage() {
         <span className="font-mono text-[11px] text-slate-600">v0.9 · DEMO</span>
       </header>
 
-      {/* Hero + 搜索 + 热门扫描 */}
+      {/* Hero + 搜索 + 最近搜索 */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6">
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -57,50 +61,36 @@ export default function HomePage() {
           </p>
         </motion.div>
 
-        {/* 搜索框 */}
+        {/* 搜索框（候选下拉） */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="glass-card flex w-full max-w-xl items-center gap-3 px-5 py-4"
+          className="flex w-full max-w-xl justify-center"
         >
-          <Search className="h-5 w-5 text-neon" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="输入公司名称或股票代码…"
-            className="w-full bg-transparent font-mono text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
-          />
-          <Crosshair className="h-4 w-4 animate-blink text-neon/60" />
-          <span className="font-mono text-[11px] tracking-wider text-neon">SCAN ⏎</span>
+          <SearchBox onPick={handlePick} />
         </motion.div>
 
-        {/* 热门扫描榜单 */}
+        {/* 最近搜索记录 */}
         <div className="mt-6 w-full max-w-xl">
-          <AnimatePresence>
-            {matches.map((c, i) => (
-              <motion.button
-                key={c.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ delay: 0.2 + i * 0.05 }}
-                onClick={() => startScan(c)}
+          {history.length === 0 ? (
+            <div className="glass-card py-6 text-center font-mono text-xs text-slate-500">
+              暂无搜索记录 —— 在上方搜索一家 A 股公司，开始第一次透视
+            </div>
+          ) : (
+            history.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => handleRescan(r)}
                 className="glass-card glass-card-hover mb-3 flex w-full items-center gap-4 px-5 py-3.5 text-left"
               >
-                <span className="font-mono text-sm text-neon">{String(i + 1).padStart(2, '0')}</span>
+                <History className="h-4 w-4 shrink-0 text-neon/70" />
                 <div className="flex-1">
-                  <div className="font-semibold text-slate-100">{c.name}</div>
-                  <div className="mt-0.5 font-mono text-xs text-slate-500">{c.tagline}</div>
+                  <div className="font-semibold text-slate-100">{r.name}</div>
                 </div>
-                <Badge variant={HINT_VARIANT[c.hint]}>{c.hint}</Badge>
-              </motion.button>
-            ))}
-          </AnimatePresence>
-          {matches.length === 0 && (
-            <div className="glass-card py-6 text-center font-mono text-xs text-slate-500">
-              未收录该公司 —— 演示版仅支持 3 家预设企业（真实数据源接入见 docs/DOC-A）
-            </div>
+                <span className="font-mono text-xs text-slate-500">{r.stockCode}</span>
+              </button>
+            ))
           )}
         </div>
       </div>

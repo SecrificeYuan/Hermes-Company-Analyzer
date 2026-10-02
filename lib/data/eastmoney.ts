@@ -39,13 +39,39 @@ export async function resolveCompany(input: string): Promise<ListedCompany | nul
         (row.Code === query || row.Name === query)
     }) as Record<string, unknown> | undefined
     if (!match) return null
-    const id = String(match.Code)
-    const suffix = String(match.MktNum) === '1' ? 'SH' : String(match.MktNum) === '0' ? 'SZ' : null
-    if (!suffix || typeof match.Name !== 'string') return null
-    return { id, name: match.Name, stockCode: `${id}.${suffix}` }
+    return toListedCompany(match)
   } catch {
     throw new CompanyLookupUnavailableError()
   }
+}
+
+/** 搜索候选：返回前 limit 个 A 股候选（供首页搜索下拉框） */
+export async function suggestCompanies(input: string, limit = 6): Promise<ListedCompany[]> {
+  const query = input.trim()
+  if (!query || query.length > 40 || /[()"'\\]/.test(query)) return []
+  try {
+    const url = new URL(SEARCH_URL)
+    url.search = new URLSearchParams({ input: query, type: '14', token: SEARCH_TOKEN }).toString()
+    const json = await getJson(url) as { QuotationCodeTable?: { Data?: unknown[] } }
+    const matches = json.QuotationCodeTable?.Data
+    if (!Array.isArray(matches)) return []
+    const companies: ListedCompany[] = []
+    for (const item of matches) {
+      const company = toListedCompany(item as Record<string, unknown>)
+      if (company) companies.push(company)
+      if (companies.length >= limit) break
+    }
+    return companies
+  } catch {
+    throw new CompanyLookupUnavailableError()
+  }
+}
+
+function toListedCompany(row: Record<string, unknown>): ListedCompany | null {
+  if (row.Classify !== 'AStock' || !/^\d{6}$/.test(String(row.Code))) return null
+  const suffix = String(row.MktNum) === '1' ? 'SH' : String(row.MktNum) === '0' ? 'SZ' : null
+  if (!suffix || typeof row.Name !== 'string') return null
+  return { id: String(row.Code), name: row.Name, stockCode: `${String(row.Code)}.${suffix}` }
 }
 
 export function sourceDate(value: unknown): string | null {
