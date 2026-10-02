@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, GitCompareArrows } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,31 +11,71 @@ import { CashFlowChart } from './CashFlowChart'
 import { CharacterCard } from './CharacterCard'
 import { EvidenceDrawer } from './EvidenceDrawer'
 import { LawsuitHeatmap } from './LawsuitHeatmap'
+import { MiniDimCard } from './MiniDimCard'
+import { NarrativeCard } from './NarrativeCard'
 import { RelationGraph } from './RelationGraph'
-import { RiskTimeline } from './RiskTimeline'
 import { SentimentCurve } from './SentimentCurve'
-import { VerdictBanner } from './VerdictBanner'
+import { AnchorNav } from './AnchorNav'
+import { MetaStrip } from './MetaStrip'
+import { SectionShell } from './detail/SectionShell'
+import { FinancialSection } from './detail/FinancialSection'
+import { EquitySection } from './detail/EquitySection'
+import { LegalSection } from './detail/LegalSection'
+import { SentimentSection } from './detail/SentimentSection'
+import { NetworkSection } from './detail/NetworkSection'
+import { EvidenceSection } from './detail/EvidenceSection'
+import { AiSection } from './detail/AiSection'
 import { ShareCard } from '@/components/share/ShareCard'
+import { detailOrder, glanceLayout, narrativeOf } from '@/lib/narrative'
+import type { DetailSectionId, GlanceSlot } from '@/lib/narrative'
 import { useMode } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
-import type { CompanyXRay } from '@/lib/types'
+import type { CompanyXRay, NarrativeKey } from '@/lib/types'
 
-const section = {
+const rise = {
   hidden: { opacity: 0, y: 20 },
   show: (i: number) => ({ opacity: 1, y: 0, transition: { delay: 0.12 + i * 0.05, duration: 0.5 } }),
 }
 
-/**
- * 报告页客户端容器：统一入场编排（stagger 0.05s）+ 证据抽屉状态。
- * 所有模块只消费 CompanyXRay。
- */
+const SLOT_KEY: Record<GlanceSlot, NarrativeKey> = {
+  finance: 'hp', equity: 'def', legal: 'atk', sentiment: 'morale', network: 'network',
+}
+
+/** LITE 详读层只渲染五个维度卡（证据入口在每张卡上；ai 为 PRO 专属 section） */
+const LITE_SECTION_KEY: Partial<Record<DetailSectionId, NarrativeKey>> = {
+  financial: 'hp', equity: 'def', legal: 'atk', sentiment: 'morale', network: 'network',
+}
+
+/** 速览层图位 → 卡片标题（双模式术语） */
+function slotTitle(slot: GlanceSlot, terms: ReturnType<typeof getTerms>): string {
+  switch (slot) {
+    case 'finance': return terms.cardTitles.cashflow
+    case 'equity': return terms.dimensionTitles.def
+    case 'legal': return terms.cardTitles.lawsuit
+    case 'sentiment': return terms.cardTitles.sentiment
+    case 'network': return terms.cardTitles.graph
+  }
+}
+
+/** 报告页客户端容器：头（版式无关）→ 速览层（版式驱动）→ 详读层（双密度，规格 §3） */
 export function XrayClient({ xray }: { xray: CompanyXRay }) {
   const mode = useMode()
-  const titles = getTerms(mode).cardTitles
+  const terms = getTerms(mode)
+  const narrative = narrativeOf(xray)
+  const layout = glanceLayout(xray, narrative)
+  const order = detailOrder(layout)
+
+  const proCharts: Record<GlanceSlot, ReactNode> = {
+    finance: <CashFlowChart hp={xray.hp} height={280} />,
+    equity: <EquitySection xray={xray} />,
+    legal: <LawsuitHeatmap timeline={xray.timeline} height={280} />,
+    sentiment: <SentimentCurve morale={xray.morale} height={280} />,
+    network: <RelationGraph graph={xray.graph} height={280} />,
+  }
 
   return (
     <main className="mx-auto min-h-screen max-w-7xl px-6 py-8">
-      {/* 导航 */}
+      {/* 顶栏 */}
       <div className="mb-6 flex items-center justify-between">
         <Button asChild variant="ghost" size="sm">
           <Link href="/"><ArrowLeft /> 重新扫描</Link>
@@ -47,67 +88,109 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         </div>
       </div>
 
-      {/* 一句话诊断 */}
-      <motion.div variants={section} custom={0} initial="hidden" animate="show">
-        <VerdictBanner xray={xray} />
+      {/* 头：LITE 角色横幅 / PRO 元信息条 */}
+      <motion.div variants={rise} custom={0} initial="hidden" animate="show">
+        {mode === 'pro' ? <MetaStrip xray={xray} /> : <CharacterCard xray={xray} />}
       </motion.div>
 
-      {/* 角色卡 + 图表矩阵 */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <motion.div variants={section} custom={1} initial="hidden" animate="show">
-          <CharacterCard xray={xray} />
-        </motion.div>
-
-        <div className="grid gap-6 lg:col-span-2 lg:grid-cols-2">
-          <motion.div variants={section} custom={2} initial="hidden" animate="show">
-            <Card className="h-full">
-              <CardHeader><CardTitle>{titles.radar}</CardTitle></CardHeader>
-              <CardContent><AttributeRadar xray={xray} /></CardContent>
-            </Card>
-          </motion.div>
-          <motion.div variants={section} custom={3} initial="hidden" animate="show">
-            <Card className="h-full">
-              <CardHeader><CardTitle>{titles.cashflow}</CardTitle></CardHeader>
-              <CardContent><CashFlowChart hp={xray.hp} /></CardContent>
-            </Card>
-          </motion.div>
-          <motion.div variants={section} custom={4} initial="hidden" animate="show">
-            <Card className="h-full">
-              <CardHeader><CardTitle>{titles.lawsuit}</CardTitle></CardHeader>
-              <CardContent><LawsuitHeatmap timeline={xray.timeline} /></CardContent>
-            </Card>
-          </motion.div>
-          <motion.div variants={section} custom={5} initial="hidden" animate="show">
-            <Card className="h-full">
-              <CardHeader><CardTitle>{titles.sentiment}</CardTitle></CardHeader>
-              <CardContent><SentimentCurve morale={xray.morale} /></CardContent>
-            </Card>
-          </motion.div>
-        </div>
+      {/* 速览层（规格 §3.3） */}
+      <div className="mt-6">
+        {mode === 'pro' ? (
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* C 位：2×2 放大 */}
+            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="lg:col-span-2 lg:row-span-2">
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle>
+                    {layout.c === 'radar' ? terms.cardTitles.radar : slotTitle(layout.c, terms)}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {layout.c === 'radar'
+                    ? <AttributeRadar xray={xray} height={560} />
+                    : proCharts[layout.c]}
+                </CardContent>
+              </Card>
+            </motion.div>
+            {layout.rest.map((slot, i) => (
+              <motion.div key={slot} variants={rise} custom={2 + i} initial="hidden" animate="show">
+                <Card className="h-full">
+                  <CardHeader><CardTitle>{slotTitle(slot, terms)}</CardTitle></CardHeader>
+                  <CardContent>{proCharts[slot]}</CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          /* LITE：C 位大卡 + 3 迷你卡（其余维度取前 3，关联网络不进速览层） */
+          <div className="grid gap-6 lg:grid-cols-3">
+            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="lg:col-span-2">
+              {layout.c === 'radar' ? (
+                <Card className="h-full">
+                  <CardHeader><CardTitle>{terms.cardTitles.radar}</CardTitle></CardHeader>
+                  <CardContent><AttributeRadar xray={xray} height={380} /></CardContent>
+                </Card>
+              ) : (
+                <NarrativeCard id="glance-c" k={SLOT_KEY[layout.c]} xray={xray} />
+              )}
+            </motion.div>
+            {layout.rest
+              .filter((s) => s !== 'network')
+              .slice(0, 3)
+              .map((slot, i) => (
+                <motion.div key={slot} variants={rise} custom={2 + i} initial="hidden" animate="show">
+                  <MiniDimCard id={`glance-${slot}`} k={SLOT_KEY[slot]} xray={xray} />
+                </motion.div>
+              ))}
+          </div>
+        )}
       </div>
 
-      {/* 风险时间轴 */}
-      <motion.div variants={section} custom={6} initial="hidden" animate="show" className="mt-6">
-        <Card>
-          <CardHeader><CardTitle>{titles.timeline}</CardTitle></CardHeader>
-          <CardContent><RiskTimeline timeline={xray.timeline} /></CardContent>
-        </Card>
-      </motion.div>
+      {/* 详读层（规格 §3.4） */}
+      <div className="mt-10">
+        <h2 className="mb-4 font-mono text-xs tracking-[0.3em] text-slate-500">
+          {mode === 'pro' ? 'DETAIL REPORT' : '慢慢看 · 每个部分的详情'}
+        </h2>
 
-      {/* 关系图谱 */}
-      <motion.div variants={section} custom={7} initial="hidden" animate="show" className="mt-6">
-        <Card>
-          <CardHeader><CardTitle>{titles.graph}</CardTitle></CardHeader>
-          <CardContent><RelationGraph graph={xray.graph} /></CardContent>
-        </Card>
-      </motion.div>
+        {mode === 'pro' ? (
+          <div className="grid gap-6 lg:grid-cols-[180px_1fr]">
+            <AnchorNav items={order.map((id) => ({ id, label: terms.sections[id] }))} />
+            <div className="space-y-6">
+              {order.map((id) => (
+                <SectionShell key={id} id={id} title={terms.sections[id]}>
+                  <SectionBody id={id} xray={xray} />
+                </SectionShell>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {order.map((id) => {
+              const k = LITE_SECTION_KEY[id]
+              return k ? <NarrativeCard key={id} id={`detail-${id}`} k={k} xray={xray} /> : null
+            })}
+          </div>
+        )}
+      </div>
 
       <footer className="mt-10 text-center font-mono text-[11px] text-slate-600">
         HERMES · 所有结论均可点开证据溯源 · 数据仅供演示，不构成投资建议
       </footer>
 
-      {/* 证据抽屉（点击隐藏状态弹出） */}
       <EvidenceDrawer />
     </main>
   )
+}
+
+/** PRO section 内容（顺序由 detailOrder 版式传导） */
+function SectionBody({ id, xray }: { id: DetailSectionId; xray: CompanyXRay }) {
+  switch (id) {
+    case 'financial': return <FinancialSection xray={xray} />
+    case 'equity': return <EquitySection xray={xray} />
+    case 'legal': return <LegalSection xray={xray} />
+    case 'sentiment': return <SentimentSection xray={xray} />
+    case 'network': return <NetworkSection xray={xray} />
+    case 'evidence': return <EvidenceSection xray={xray} />
+    case 'ai': return <AiSection />
+  }
 }
