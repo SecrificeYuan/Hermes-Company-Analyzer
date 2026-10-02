@@ -1,0 +1,65 @@
+{
+  "_note": "【虚构演示数据 · 与真实公司无关】暴雷前兆型：现金流枯竭、诉讼风暴、欠薪传闻，分析结果应为 red。",
+  "meta": {
+    "id": "mock-danger",
+    "name": "恒晟地产",
+    "stockCode": "8808.HK",
+    "industry": "房地产开发",
+    "fetchedAt": "2026-10-01T09:00:00+08:00",
+    "sources": [
+      { "name": "mock", "ok": true, "latencyMs": 11, "fallback": false }
+    ]
+  },
+  "financial": {
+    "years": [
+      { "year": "2023", "revenue": 8200000, "netProfit": 310000, "operatingCashFlow": -215000, "debtRatio": 76.9, "currentRatio": 1.1 },
+      { "year": "2024", "revenue": 5600000, "netProfit": -920000, "operatingCashFlow": -648000, "debtRatio": 83.5, "currentRatio": 0.9 },
+      { "year": "2025", "revenue": 3150000, "netProfit": -2280000, "operatingCashFlow": -976000, "debtRatio": 88.7, "currentRatio": 0.6 }
+    ]
+  },
+  "announcements": [
+    { "date": "2026-09-10", "title": "关于部分项目停工的说明公告", "type": "其他", "url": "https://example.com/ann/d20260910", "summary": "承认三个城市项目暂停施工" },
+    { "date": "2026-08-27", "title": "关于债务逾期及被申请执行的公告", "type": "诉讼", "url": "https://example.com/ann/d20260827", "summary": "逾期债务合计超11亿元" },
+    { "date": "2026-06-18", "title": "关于涉及重大诉讼的公告", "type": "诉讼", "url": "https://example.com/ann/d20260618", "summary": "金融借款合同纠纷，涉案1.2亿元" },
+    { "date": "2026-04-30", "title": "2025年年度报告", "type": "年报", "url": "https://example.com/ann/d20260430", "summary": "巨亏228亿元，审计出具保留意见" },
+    { "date": "2026-03-15", "title": "关于收到交易所问询函的公告", "type": "问询", "url": "https://example.com/ann/d20260315", "summary": "问询持续经营能力" },
+    { "date": "2026-02-05", "title": "控股股东股份质押公告", "type": "质押", "url": "https://example.com/ann/d20260205", "summary": "累计质押比例达所持股份72%" }
+  ],
+  "legal": {
+    "lawsuits": [
+      { "date": "2026-04-12", "role": "被告", "amount": 4500, "cause": "建设工程施工合同纠纷" },
+      { "date": "2026-05-06", "role": "被告", "amount": 2800, "cause": "买卖合同纠纷（建材货款）" },
+      { "date": "2026-05-28", "role": "被告", "amount": 1600, "cause": "买卖合同纠纷（水泥货款）" },
+      { "date": "2026-06-20", "role": "被告", "amount": 3200, "cause": "票据追索权纠纷" },
+      { "date": "2026-07-09", "role": "被告", "amount": 950, "cause": "买卖合同纠纷（钢材货款）" },
+      { "date": "2026-07-30", "role": "被告", "amount": 12000, "cause": "金融借款合同纠纷" },
+      { "date": "2026-08-21", "role": "被告", "amount": 6000, "cause": "信托贷款违约纠纷" },
+      { "date": "2026-09-14", "role": "被告", "amount": 780, "cause": "买卖合同纠纷（混凝土货款）" }
+    ],
+    "executions": [
+      { "date": "2026-07-15", "amount": 25000, "status": "执行中" },
+      { "date": "2026-08-30", "amount": 80000, "status": "执行中" },
+      { "date": "2026-09-22", "amount": 12000, "status": "已立案" }
+    ],
+    "dishonest": 2
+  },
+  "sentiment": [
+    { "date": "2025-10-15", "tone": -2, "headline": "销售持续下滑，债务展期传闻再起", "source": "华尔街见闻" },
+    { "date": "2025-11-15", "tone": -3, "headline": "多地业主反映交付延期", "source": "微博财经" },
+    { "date": "2025-12-15", "tone": -4, "headline": "评级机构下调展望至负面", "source": "券商研报" },
+    { "date": "2026-01-15", "tone": -5, "headline": "商票逾期名单再现身，供应商上门讨债", "source": "东方财富" },
+    { "date": "2026-02-15", "tone": -6, "headline": "控股股东高比例质押引平仓担忧", "source": "华尔街见闻" },
+    { "date": "2026-03-15", "tone": -5, "headline": "年报延期披露，审计分歧曝光", "source": "新浪财经" },
+    { "date": "2026-04-15", "tone": -7, "headline": "巨亏228亿：史上最差年报", "source": "东方财富" },
+    { "date": "2026-05-15", "tone": -6, "headline": "多地项目停工，业主维权视频流传", "source": "微博财经" },
+    { "date": "2026-06-15", "tone": -8, "headline": "员工讨薪视频流传，称已三个月未发工资", "source": "微博财经" },
+    { "date": "2026-07-15", "tone": -7, "headline": "被申请强制执行2.5亿元，账户遭冻结", "source": "华尔街见闻" },
+    { "date": "2026-08-15", "tone": -8, "headline": "再曝欠薪：多地工地停工，工人集体讨薪", "source": "新浪财经" },
+    { "date": "2026-09-15", "tone": -9, "headline": "疑似资金链断裂，评级下调至CCC", "source": "券商研报" }
+  ],
+  "people": [
+    { "name": "郑国雄", "role": "董事会主席", "event": "减持", "date": "2026-06-05", "amount": 3200 },
+    { "name": "林伟", "role": "财务总监", "event": "离职", "date": "2026-07-18" },
+    { "name": "恒晟控股", "role": "控股股东", "event": "质押", "date": "2026-02-03", "amount": 72 }
+  ]
+}

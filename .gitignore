@@ -1,34 +1,28 @@
-# Local machine and secrets
-AGENT.local.md
-.env
-.env.*
-!.env.example
+# dependencies
+/node_modules
 
-# Python
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.venv/
-venv/
+# next.js
+/.next/
+/out/
 
-# Node.js
-node_modules/
-dist/
-.vite/
-coverage/
+# production
+/build
 
-# Runtime data and logs
-data/*
-!data/.gitkeep
-*.log
-
-# Local reference material; project-specific rules are in AGENTS.md and .agents/
-Workflow/
-
-# Editors and OS
-.idea/
-.vscode/
+# misc
 .DS_Store
-Thumbs.db
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env files
+.env*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# 离线预跑的 A 股财务数据（体积大且可再生成，不进 Git）
+/data/akshare/*.json

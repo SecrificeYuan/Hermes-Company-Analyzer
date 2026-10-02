@@ -1,8 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://hermes.local/contracts/llm-narrative-result.v1.schema.json",
-  "title": "LlmNarrativeResult v1", "x-contract-status": "frozen", "type": "object", "additionalProperties": false,
-  "required": ["schemaVersion", "generationStatus", "sections"],
-  "properties": { "schemaVersion": { "const": "v1" }, "generationStatus": { "type": "string", "enum": ["complete", "fallback", "unavailable"] }, "provider": { "type": "string" }, "model": { "type": "string" }, "failureReason": { "type": "string" }, "sections": { "type": "array", "items": { "$ref": "#/$defs/section" } } },
-  "$defs": { "section": { "type": "object", "additionalProperties": false, "required": ["id", "title", "content", "evidenceIds"], "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "content": { "type": "string", "maxLength": 1200 }, "evidenceIds": { "type": "array", "minItems": 1, "items": { "type": "string" } } } } }
-}

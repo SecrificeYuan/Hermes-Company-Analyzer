@@ -1,0 +1,49 @@
+{
+  "_note": "【虚构演示数据 · 与真实公司无关】稳健白马型：财务强劲、几无负面事件，分析结果应为 green。",
+  "meta": {
+    "id": "mock-healthy",
+    "name": "赤水河酒业",
+    "stockCode": "600519.SH",
+    "industry": "白酒制造",
+    "fetchedAt": "2026-10-01T09:00:00+08:00",
+    "sources": [
+      { "name": "mock", "ok": true, "latencyMs": 12, "fallback": false }
+    ]
+  },
+  "financial": {
+    "years": [
+      { "year": "2023", "revenue": 12500000, "netProfit": 6100000, "operatingCashFlow": 6400000, "debtRatio": 17.8, "currentRatio": 4.6 },
+      { "year": "2024", "revenue": 14200000, "netProfit": 7050000, "operatingCashFlow": 7380000, "debtRatio": 16.5, "currentRatio": 4.9 },
+      { "year": "2025", "revenue": 15800000, "netProfit": 8120000, "operatingCashFlow": 8510000, "debtRatio": 15.2, "currentRatio": 5.2 }
+    ]
+  },
+  "announcements": [
+    { "date": "2026-06-15", "title": "2025年度利润分配实施公告：每10股派现276元", "type": "其他", "url": "https://example.com/ann/20260615", "summary": "分红率维持75%，连续八年提升" },
+    { "date": "2026-03-28", "title": "2025年年度报告", "type": "年报", "url": "https://example.com/ann/20260328", "summary": "营收净利双增，经营现金流851亿元" },
+    { "date": "2025-11-20", "title": "关于核心产品出厂价调整的公告", "type": "其他", "url": "https://example.com/ann/20251120", "summary": "主力产品提价8%，渠道库存良性" }
+  ],
+  "legal": {
+    "lawsuits": [
+      { "date": "2026-02-11", "role": "原告", "amount": 500, "cause": "商标侵权纠纷（维权打假）" }
+    ],
+    "executions": [],
+    "dishonest": 0
+  },
+  "sentiment": [
+    { "date": "2025-10-15", "tone": 3, "headline": "三季度动销平稳，渠道信心充足", "source": "证券时报" },
+    { "date": "2025-11-15", "tone": 4, "headline": "提价落地，券商上调盈利预测", "source": "券商研报" },
+    { "date": "2025-12-15", "tone": 4, "headline": "春节备货启动，批价稳中有升", "source": "东方财富" },
+    { "date": "2026-01-15", "tone": 5, "headline": "春节动销超预期，多地断货", "source": "新浪财经" },
+    { "date": "2026-02-15", "tone": 3, "headline": "节后库存良性，批价坚挺", "source": "证券时报" },
+    { "date": "2026-03-15", "tone": 4, "headline": "年报前瞻：分红率或再提升", "source": "券商研报" },
+    { "date": "2026-04-15", "tone": 5, "headline": "年报落地：现金流创历史新高", "source": "东方财富" },
+    { "date": "2026-05-15", "tone": 4, "headline": "股东大会高票通过分红方案", "source": "新浪财经" },
+    { "date": "2026-06-15", "tone": 6, "headline": "特别分红落地，机构增持明显", "source": "证券时报" },
+    { "date": "2026-07-15", "tone": 5, "headline": "半年报预告稳健，预收款充足", "source": "券商研报" },
+    { "date": "2026-08-15", "tone": 5, "headline": "中秋备货启动，终端需求旺盛", "source": "东方财富" },
+    { "date": "2026-09-15", "tone": 6, "headline": "中秋动销超预期，全年目标提前锁定", "source": "新浪财经" }
+  ],
+  "people": [
+    { "name": "季建国", "role": "董事长", "event": "增持", "date": "2026-05-20", "amount": 2000 }
+  ]
+}

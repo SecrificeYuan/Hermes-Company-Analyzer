@@ -1,0 +1,54 @@
+{
+  "_note": "【虚构演示数据 · 与真实公司无关】争议中概股型：增长尚可但质押/减持/问询缠身，分析结果应为 yellow。",
+  "meta": {
+    "id": "mock-warning",
+    "name": "蓝湾咖啡",
+    "stockCode": "BWCF.US",
+    "industry": "连锁咖啡·新零售",
+    "fetchedAt": "2026-10-01T09:00:00+08:00",
+    "sources": [
+      { "name": "mock", "ok": true, "latencyMs": 15, "fallback": false }
+    ]
+  },
+  "financial": {
+    "years": [
+      { "year": "2023", "revenue": 2100000, "netProfit": -95000, "operatingCashFlow": -62000, "debtRatio": 52.4, "currentRatio": 1.5 },
+      { "year": "2024", "revenue": 3350000, "netProfit": 68000, "operatingCashFlow": 128000, "debtRatio": 57.1, "currentRatio": 1.2 },
+      { "year": "2025", "revenue": 4620000, "netProfit": 155000, "operatingCashFlow": 88000, "debtRatio": 61.8, "currentRatio": 1.0 }
+    ]
+  },
+  "announcements": [
+    { "date": "2026-08-19", "title": "高级管理人员减持计划预披露公告", "type": "减持", "url": "https://example.com/ann/w20260819", "summary": "CEO拟减持不超过1800万元市值股票" },
+    { "date": "2026-06-09", "title": "关于涉及诉讼的公告", "type": "诉讼", "url": "https://example.com/ann/w20260609", "summary": "加盟商合同纠纷，涉案800万元" },
+    { "date": "2026-04-22", "title": "关于收到交易所问询函的公告", "type": "问询", "url": "https://example.com/ann/w20260422", "summary": "问询关注同店增长与现金流匹配性" },
+    { "date": "2026-03-30", "title": "2025年年度报告", "type": "年报", "url": "https://example.com/ann/w20260330", "summary": "营收增长38%，经营现金流同比下降31%" },
+    { "date": "2026-01-12", "title": "控股股东股份质押公告", "type": "质押", "url": "https://example.com/ann/w20260112", "summary": "累计质押比例达所持股份45%" }
+  ],
+  "legal": {
+    "lawsuits": [
+      { "date": "2025-11-20", "role": "原告", "amount": 1200, "cause": "商标侵权纠纷" },
+      { "date": "2026-05-15", "role": "被告", "amount": 800, "cause": "加盟合同纠纷" },
+      { "date": "2026-07-02", "role": "被告", "amount": 350, "cause": "买卖合同纠纷" }
+    ],
+    "executions": [],
+    "dishonest": 0
+  },
+  "sentiment": [
+    { "date": "2025-10-15", "tone": 4, "headline": "门店突破一万家，下沉市场凶猛", "source": "36氪" },
+    { "date": "2025-11-15", "tone": 3, "headline": "联名款刷屏，单日销量破纪录", "source": "新浪财经" },
+    { "date": "2025-12-15", "tone": 2, "headline": "亏损收窄，盈利拐点将至？", "source": "华尔街见闻" },
+    { "date": "2026-01-15", "tone": -2, "headline": "控股股东质押股份引发关注", "source": "东方财富" },
+    { "date": "2026-02-15", "tone": -3, "headline": "做空机构质疑其同店销售数据", "source": "华尔街见闻" },
+    { "date": "2026-03-15", "tone": 1, "headline": "年报营收高增长，现金流隐忧显现", "source": "36氪" },
+    { "date": "2026-04-15", "tone": -4, "headline": "交易所问询函直指收入确认口径", "source": "东方财富" },
+    { "date": "2026-05-15", "tone": -2, "headline": "部分加盟商投诉返点拖欠", "source": "新浪财经" },
+    { "date": "2026-06-15", "tone": -1, "headline": "食安投诉登上热搜，官方致歉", "source": "微博财经" },
+    { "date": "2026-07-15", "tone": 2, "headline": "二季度同店转正，股价小幅反弹", "source": "36氪" },
+    { "date": "2026-08-15", "tone": -3, "headline": "CEO减持计划公布，市场解读分歧", "source": "华尔街见闻" },
+    { "date": "2026-09-15", "tone": -2, "headline": "分析师下调评级至「持有」", "source": "券商研报" }
+  ],
+  "people": [
+    { "name": "钱正豪", "role": "首席执行官", "event": "减持", "date": "2026-08-25", "amount": 1800 },
+    { "name": "蓝湾投资（控股）", "role": "控股股东", "event": "质押", "date": "2026-01-10", "amount": 45 }
+  ]
+}

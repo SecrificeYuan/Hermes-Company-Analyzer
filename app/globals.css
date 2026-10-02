@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-ink-bg text-slate-200 font-sans antialiased;
+}
+
+/* ===== 深空网格背景（首页/报告页共用） ===== */
+.bg-grid {
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(0, 229, 255, 0.1), transparent),
+    linear-gradient(rgba(0, 229, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.045) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    48px 48px,
+    48px 48px;
+}
+
+/* ===== 玻璃拟态卡片 ===== */
+.glass-card {
+  @apply rounded-card border backdrop-blur-xl;
+  background: rgba(18, 26, 43, 0.72);
+  border-color: rgba(0, 229, 255, 0.12);
+}
+
+.glass-card-hover {
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.glass-card-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(0, 229, 255, 0.45);
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.18);
+}
+
+/* ===== 文字辉光 ===== */
+.text-glow {
+  text-shadow: 0 0 14px rgba(0, 229, 255, 0.55);
+}
+
+.text-glow-danger {
+  text-shadow: 0 0 14px rgba(255, 59, 92, 0.55);
+}
+
+/* ===== 顶部扫描线容器 ===== */
+.scan-beam {
+  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.9), transparent);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.8);
+}
+
+/* ===== 滚动条（终端感） ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0f1c;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.22);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 229, 255, 0.4);
+}
