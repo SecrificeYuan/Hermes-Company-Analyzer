@@ -11,3 +11,15 @@ export const PRESET_COMPANIES: PresetCompany[] = [
   { id: 'mock-warning', name: '蓝湾咖啡', tagline: '万店神话 · 争议缠身', hint: '争议成长' },
   { id: 'mock-danger', name: '恒晟地产', tagline: '债务高压 · 暴雷前兆', hint: '高危预警' },
 ]
+
+/** 首页搜索过滤：空串返回全部；按名称/标语/ID 子串匹配（大小写不敏感） */
+export function filterPresets(query: string): PresetCompany[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return PRESET_COMPANIES
+  return PRESET_COMPANIES.filter(
+    (c) =>
+      c.name.toLowerCase().includes(q) ||
+      c.tagline.toLowerCase().includes(q) ||
+      c.id.toLowerCase().includes(q),
+  )
+}

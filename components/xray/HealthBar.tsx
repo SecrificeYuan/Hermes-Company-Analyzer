@@ -3,20 +3,25 @@
 import { motion } from 'framer-motion'
 import { StatNumber } from './StatNumber'
 import { formatWan } from '@/lib/utils'
-import { scoreColor } from '@/lib/theme/tokens'
+import { scoreColor } from '@/lib/theme'
+import { useTokens, useMode } from '@/lib/theme/use-tokens'
+import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
 
 /**
  * HP 血条：从 0 平滑增长；低于 30% 时边框呼吸闪烁红光。
  */
 export function HealthBar({ hp }: { hp: CompanyXRay['hp'] }) {
-  const color = scoreColor(hp.score)
+  const t = useTokens()
+  const mode = useMode()
+  const terms = getTerms(mode)
+  const color = scoreColor(t, hp.score)
   const critical = hp.score < 30
 
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between font-mono">
-        <span className="text-xs tracking-wider text-slate-400">HP · 财务血量</span>
+        <span className="text-xs tracking-wider text-slate-400">{terms.healthLabel}</span>
         <span className="text-xs" style={{ color }}>{hp.label}</span>
       </div>
       <div

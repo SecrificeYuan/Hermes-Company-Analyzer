@@ -44,6 +44,7 @@ export function analyze(raw: RawCompanyData, asOf = new Date(raw.meta.fetchedAt)
     name: raw.meta.name,
     stockCode: raw.meta.stockCode,
     industry: raw.meta.industry,
+    asOf: raw.meta.fetchedAt,
     generatedAt: new Date().toISOString(),
     overallRisk,
     riskScore,
@@ -56,6 +57,8 @@ export function analyze(raw: RawCompanyData, asOf = new Date(raw.meta.fetchedAt)
     graph: buildGraph(raw, riskScore),
     verdict,
     advice,
+    registry: raw.meta.registry,
+    llm: raw.llm,
     sources: raw.meta.sources,
   }
 }

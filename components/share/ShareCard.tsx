@@ -3,7 +3,8 @@
 import { useRef, useState } from 'react'
 import { Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { riskColor } from '@/lib/theme/tokens'
+import { useTokens } from '@/lib/theme/use-tokens'
+import { scoreColor } from '@/lib/theme'
 import type { CompanyXRay } from '@/lib/types'
 
 /**
@@ -11,9 +12,10 @@ import type { CompanyXRay } from '@/lib/types'
  * 分享卡本身屏外渲染，保证导出图与页面滚动位置无关。
  */
 export function ShareCard({ xray }: { xray: CompanyXRay }) {
+  const t = useTokens()
   const cardRef = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
-  const color = riskColor[xray.overallRisk]
+  const color = t.riskColor[xray.overallRisk]
 
   const exportPng = async () => {
     if (!cardRef.current || busy) return
@@ -65,7 +67,7 @@ export function ShareCard({ xray }: { xray: CompanyXRay }) {
               ] as const).map(([label, score]) => (
                 <div key={label}>
                   <div className="text-xs tracking-[0.3em] text-slate-500">{label}</div>
-                  <div className="mt-1 text-5xl font-bold" style={{ color: score >= 60 ? '#00E58A' : score >= 30 ? '#FFB020' : '#FF3B5C' }}>
+                  <div className="mt-1 text-5xl font-bold" style={{ color: scoreColor(t, score) }}>
                     {score}
                   </div>
                 </div>

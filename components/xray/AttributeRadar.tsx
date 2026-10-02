@@ -2,26 +2,26 @@
 
 import type { EChartsOption } from 'echarts'
 import { EChart } from './EChart'
-import { baseChartOption, colors } from '@/lib/theme/echarts-dark'
+import { baseChartOptionFor } from '@/lib/theme/echarts-themes'
+import { useMode, useTokens } from '@/lib/theme/use-tokens'
+import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
 
-/** 五维雷达：HP / DEF / ATK(涉诉) / 士气 / 稳健(100-风险分)，青色半透明填充 */
-export function AttributeRadar({ xray }: { xray: CompanyXRay }) {
+/** 五维雷达：HP / DEF / ATK(涉诉) / 士气 / 稳健，主色=主题 accent 半透明填充 */
+export function AttributeRadar({ xray, height = 250 }: { xray: CompanyXRay; height?: number }) {
+  const t = useTokens()
+  const mode = useMode()
+  const terms = getTerms(mode)
+
   const option: EChartsOption = {
-    ...baseChartOption,
+    ...baseChartOptionFor(t),
     radar: {
-      indicator: [
-        { name: 'HP 血量', max: 100 },
-        { name: 'DEF 护甲', max: 100 },
-        { name: 'ATK 涉诉', max: 100 },
-        { name: '士气', max: 100 },
-        { name: '稳健', max: 100 },
-      ],
+      indicator: terms.radarIndicators.map((name) => ({ name, max: 100 })),
       radius: '68%',
-      axisName: { color: colors.textDim, fontSize: 11 },
-      splitLine: { lineStyle: { color: colors.gridLine } },
-      splitArea: { areaStyle: { color: ['transparent', 'rgba(0,229,255,0.03)'] } },
-      axisLine: { lineStyle: { color: colors.gridLine } },
+      axisName: { color: t.colors.textDim, fontSize: 11 },
+      splitLine: { lineStyle: { color: t.colors.gridLine } },
+      splitArea: { areaStyle: { color: ['transparent', `${t.colors.accent}08`] } },
+      axisLine: { lineStyle: { color: t.colors.gridLine } },
     },
     series: [
       {
@@ -29,15 +29,15 @@ export function AttributeRadar({ xray }: { xray: CompanyXRay }) {
         data: [
           {
             value: [xray.hp.score, xray.def.score, xray.atk.score, xray.morale.score, 100 - xray.riskScore],
-            name: '五维属性',
-            areaStyle: { color: 'rgba(0,229,255,0.22)' },
-            lineStyle: { color: colors.neon, width: 2 },
-            itemStyle: { color: colors.neon },
+            name: terms.radarSeriesName,
+            areaStyle: { color: `${t.colors.accent}38` },
+            lineStyle: { color: t.colors.accent, width: 2 },
+            itemStyle: { color: t.colors.accent },
             symbolSize: 5,
           },
         ],
       },
     ],
   }
-  return <EChart option={option} height={250} />
+  return <EChart option={option} height={height} theme={mode} />
 }

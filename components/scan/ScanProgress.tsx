@@ -8,7 +8,7 @@ const STAGES = [
   '抓取公告与涉诉记录 …',
   '聚合舆情情绪 …',
   '运行四维打分与隐藏状态规则 …',
-  '生成 X 光片 …',
+  '生成透视报告 …',
 ]
 
 /** 扫描过场的进度面板：模拟终端日志逐行点亮，营造"正在分析"的仪式感 */
@@ -20,7 +20,7 @@ export function ScanProgress({ companyName, onDone }: { companyName: string; onD
       const t = setTimeout(() => onDone?.(), 300)
       return () => clearTimeout(t)
     }
-    const t = setTimeout(() => setStep((s) => s + 1), 420)
+    const t = setTimeout(() => setStep((s) => s + 1), 340)
     return () => clearTimeout(t)
   }, [step, onDone])
 

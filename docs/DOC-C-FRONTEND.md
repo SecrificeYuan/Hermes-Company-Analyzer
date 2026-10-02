@@ -7,6 +7,8 @@
 
 ## 1. 现状基线（已完成，端到端可跑）
 
+> 布局基线以 docs/superpowers/specs/2026-10-02-report-redesign-design.md 为准（2026-10-02 起替代旧基线）。
+
 | 模块 | 状态 | 说明 |
 |---|---|---|
 | 设计 token | ✅ 冻结 | `tailwind.config.ts` + `lib/theme/tokens.ts`（两处同步修改） |
@@ -19,18 +21,14 @@
 
 **布局（已实现，按此迭代）：**
 ```text
-┌─────────────────────────────────────────────┐
-│ VerdictBanner  一句话诊断 + 风险徽章 + 来源角标 │
-├──────────────┬──────────────────────────────┤
-│ CharacterCard│  AttributeRadar / CashFlowChart│
-│  HP/DEF/ATK  │  LawsuitHeatmap / SentimentCurve│
-│  隐藏状态列表  │                               │
-├──────────────┴──────────────────────────────┤
-│ RiskTimeline（横向滚动）                      │
-├─────────────────────────────────────────────┤
-│ RelationGraph（力导向）                       │
-└─────────────────────────────────────────────┘
-        EvidenceDrawer：点击隐藏状态右侧滑出
+顶栏（保留：重新扫描 / 双公司对比 / 分享 / 模式切换）
+头        LITE：角色横幅(CharacterCard)   PRO：元信息条(MetaStrip)
+速览层    版式驱动（lib/narrative.ts：narrativeOf → glanceLayout）
+          PRO：5 图位，C 位 2×2 放大（均衡版式 = 雷达大图）
+          LITE：C 位叙事大卡 + 3 迷你卡(MiniDimCard)
+详读层    PRO：AnchorNav(scroll-spy) + 七 section（components/xray/detail/，顺序随版式）
+          LITE：叙事卡流（NarrativeCard ×5，证据入口在每张卡）
+页脚（保留）+ EvidenceDrawer（全局）
 ```
 
 ## 2. 你的任务清单（按优先级）

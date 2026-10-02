@@ -2,7 +2,7 @@ import type { Config } from 'tailwindcss'
 
 /**
  * 设计系统 —— 暗色科技风（金融终端感）
- * 任何颜色/圆角/发光调整只改这里与 lib/theme/tokens.ts，保持两处同步。
+ * 颜色由 app/globals.css 的 CSS 变量驱动（:root/lite/pro 双主题），保持与 lib/theme/tokens.ts 同步。
  */
 const config: Config = {
   darkMode: 'class',
@@ -15,15 +15,15 @@ const config: Config = {
     extend: {
       colors: {
         ink: {
-          bg: '#070B14', // 深空黑背景
-          card: '#121A2B', // 卡片底
-          edge: 'rgba(0,229,255,0.12)', // 卡片描边
+          bg: 'var(--bg)',
+          card: 'var(--card-solid)',
+          edge: 'var(--edge)',
         },
-        neon: '#00E5FF', // 主色霓虹青
-        danger: '#FF3B5C', // 危险红
-        warn: '#FFB020', // 警告琥珀
-        safe: '#00E58A', // 安全绿
-        grape: '#8B5CF6', // 图谱紫
+        neon: 'var(--accent)',
+        danger: 'var(--danger)',
+        warn: 'var(--warn)',
+        safe: 'var(--safe)',
+        grape: 'var(--grape)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
