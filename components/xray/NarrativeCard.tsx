@@ -12,12 +12,39 @@ function pickEvidence(items: HiddenStatus[]): HiddenStatus | undefined {
   return [...items].sort((a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity])[0]
 }
 
-/** LITE 叙事卡：图标 + 关键数字 + 一段人话 + 证据入口（规格 §5.1 E） */
-export function NarrativeCard({ id, k, xray }: { id: string; k: NarrativeKey; xray: CompanyXRay }) {
+/** LITE 叙事卡：图标 + 关键数字 + 一段人话 + 证据入口（规格 §5.1 E）；compact 用于 Hero 右侧竖列 */
+export function NarrativeCard({ id, k, xray, compact }: { id: string; k: NarrativeKey; xray: CompanyXRay; compact?: boolean }) {
   const setActiveStatus = useXrayStore((s) => s.setActiveStatus)
   const terms = getTerms('lite')
   const model = narrativeCopy(k, xray)
   const evidence = pickEvidence(xray.hiddenStatus)
+
+  if (compact) {
+    return (
+      <section id={id} className="glass-card scroll-mt-24 p-3.5">
+        <div className="flex items-baseline justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-[13px] font-bold text-slate-100">
+            <span aria-hidden>{NARRATIVE_ICONS[k]}</span>
+            {terms.dimensionTitles[k]}
+          </div>
+          <span className="shrink-0 text-right">
+            <span className="text-lg font-extrabold text-slate-50">{model.big}</span>{' '}
+            <span className="font-mono text-[10px] text-slate-500">{model.caption}</span>
+          </span>
+        </div>
+        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-300">{model.text}</p>
+        {evidence && (
+          <button
+            onClick={() => setActiveStatus(evidence)}
+            className="mt-2 inline-flex items-center gap-1 rounded-btn border border-neon/40 px-2 py-1 font-mono text-[10px] text-neon transition-colors hover:bg-neon/10"
+          >
+            <FileSearch className="h-3 w-3" />
+            查看证据
+          </button>
+        )}
+      </section>
+    )
+  }
 
   return (
     <section id={id} className="glass-card scroll-mt-24 p-5">

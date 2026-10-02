@@ -11,7 +11,6 @@ import { CashFlowChart } from './CashFlowChart'
 import { CharacterCard } from './CharacterCard'
 import { EvidenceDrawer } from './EvidenceDrawer'
 import { LawsuitHeatmap } from './LawsuitHeatmap'
-import { MiniDimCard } from './MiniDimCard'
 import { NarrativeCard } from './NarrativeCard'
 import { RelationGraph } from './RelationGraph'
 import { SentimentCurve } from './SentimentCurve'
@@ -37,10 +36,6 @@ import type { CompanyXRay, NarrativeKey } from '@/lib/types'
 const rise = {
   hidden: { opacity: 0, y: 20 },
   show: (i: number) => ({ opacity: 1, y: 0, transition: { delay: 0.12 + i * 0.05, duration: 0.5 } }),
-}
-
-const SLOT_KEY: Record<GlanceSlot, NarrativeKey> = {
-  finance: 'hp', equity: 'def', legal: 'atk', sentiment: 'morale', network: 'network',
 }
 
 /** LITE 详读层只渲染五个维度卡（证据入口在每张卡上；ai 为 PRO 专属 section） */
@@ -90,10 +85,28 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         </div>
       </div>
 
-      {/* 头：LITE 角色横幅 / PRO 元信息条 */}
-      <motion.div variants={rise} custom={0} initial="hidden" animate="show">
-        {mode === 'pro' ? <MetaStrip xray={xray} /> : <CharacterCard xray={xray} />}
-      </motion.div>
+      {/* 头：PRO 元信息条；LITE 角色横幅 + 右侧五维紧凑卡竖列 */}
+      {mode === 'pro' ? (
+        <motion.div variants={rise} custom={0} initial="hidden" animate="show">
+          <MetaStrip xray={xray} />
+        </motion.div>
+      ) : (
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)]">
+          <motion.div variants={rise} custom={0} initial="hidden" animate="show" className="min-w-0">
+            <CharacterCard xray={xray} />
+          </motion.div>
+          <div className="min-w-0 space-y-4">
+            {order.map((id, i) => {
+              const k = LITE_SECTION_KEY[id]
+              return k ? (
+                <motion.div key={id} variants={rise} custom={1 + i} initial="hidden" animate="show">
+                  <NarrativeCard id={`detail-${id}`} k={k} xray={xray} compact />
+                </motion.div>
+              ) : null
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 行情与资金区（PRO 专属） */}
       {mode === 'pro' && (
@@ -102,9 +115,10 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         </motion.div>
       )}
 
-      {/* 速览层（规格 §3.3） */}
+      {/* 速览层（规格 §3.3）：仅 PRO；LITE 的信息已并入上方横幅与下方维度网格 */}
+      {mode === 'pro' && (
       <div className="mt-6">
-        {mode === 'pro' ? (
+        {(
           <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
             {/* C 位：2×2 放大 */}
             <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-w-0 lg:col-span-2 lg:row-span-2">
@@ -134,57 +148,27 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
               <AiGlanceCard xray={xray} />
             </motion.div>
           </div>
-        ) : (
-          /* LITE：C 位大卡 + 3 迷你卡（其余维度取前 3，关联网络不进速览层） */
-          <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
-            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-w-0 lg:col-span-2">
-              {layout.c === 'radar' ? (
-                <Card className="h-full">
-                  <CardHeader><CardTitle>{terms.cardTitles.radar}</CardTitle></CardHeader>
-                  <CardContent><AttributeRadar xray={xray} height={380} /></CardContent>
-                </Card>
-              ) : (
-                <NarrativeCard id="glance-c" k={SLOT_KEY[layout.c]} xray={xray} />
-              )}
-            </motion.div>
-            {layout.rest
-              .filter((s) => s !== 'network')
-              .slice(0, 3)
-              .map((slot, i) => (
-                <motion.div key={slot} variants={rise} custom={2 + i} initial="hidden" animate="show">
-                  <MiniDimCard id={`glance-${slot}`} k={SLOT_KEY[slot]} xray={xray} />
-                </motion.div>
-              ))}
-          </div>
         )}
       </div>
+      )}
 
-      {/* 详读层（规格 §3.4） */}
+      {/* 维度层（规格 §3.4）：仅 PRO；LITE 的维度卡已并入上方横幅右侧竖列 */}
+      {mode === 'pro' && (
       <div className="mt-10">
-        <h2 className="mb-4 font-mono text-xs tracking-[0.3em] text-slate-500">
-          {mode === 'pro' ? 'DETAIL REPORT' : '慢慢看 · 每个部分的详情'}
-        </h2>
+        <h2 className="mb-4 font-mono text-xs tracking-[0.3em] text-slate-500">DETAIL REPORT</h2>
 
-        {mode === 'pro' ? (
-          <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
-            <AnchorNav items={order.map((id) => ({ id, label: terms.sections[id] }))} />
-            <div className="min-w-0 space-y-6">
-              {order.map((id) => (
-                <SectionShell key={id} id={id} title={terms.sections[id]}>
-                  <SectionBody id={id} xray={xray} />
-                </SectionShell>
-              ))}
-            </div>
+        <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
+          <AnchorNav items={order.map((id) => ({ id, label: terms.sections[id] }))} />
+          <div className="min-w-0 space-y-6">
+            {order.map((id) => (
+              <SectionShell key={id} id={id} title={terms.sections[id]}>
+                <SectionBody id={id} xray={xray} />
+              </SectionShell>
+            ))}
           </div>
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
-            {order.map((id) => {
-              const k = LITE_SECTION_KEY[id]
-              return k ? <NarrativeCard key={id} id={`detail-${id}`} k={k} xray={xray} /> : null
-            })}
-          </div>
-        )}
+        </div>
       </div>
+      )}
 
       <footer className="mt-10 text-center font-mono text-[11px] text-slate-600">
         HERMES · 所有结论均可点开证据溯源 · 数据仅供演示，不构成投资建议
