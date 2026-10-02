@@ -38,6 +38,46 @@
   --grid-cell: rgba(139, 148, 171, 0.05);
 }
 
+[data-theme='home'] {
+  --bg: #070b14;
+  --card: rgba(16, 22, 37, 0.85);
+  --card-solid: #101625;
+  --edge: #1e2a42;
+  --accent: #4c8dff;
+  --danger: #ff5c6c;
+  --warn: #ffb020;
+  --safe: #3ecf8e;
+  --grape: #8b5cf6;
+  --text-main: #f4f6fa;
+  --text-dim: #8b94ab;
+  --text-faint: #66738e;
+  --grid-line: rgba(139, 148, 171, 0.14);
+  --grid-glow: rgba(76, 141, 255, 0.1);
+  --grid-cell: rgba(139, 148, 171, 0.05);
+}
+
+/* ===== 首页中性皮：封堵全局主题作用域穿透（main[data-theme='home'] 前缀提权） ===== */
+main[data-theme='home'] .glass-card {
+  backdrop-filter: none;
+}
+
+main[data-theme='home'] .text-glow {
+  text-shadow: 0 0 14px rgba(76, 141, 255, 0.55);
+}
+
+main[data-theme='home'] .text-glow-danger {
+  text-shadow: 0 0 14px rgba(255, 92, 108, 0.55);
+}
+
+main[data-theme='home'] .scan-beam {
+  background: linear-gradient(90deg, transparent, rgba(76, 141, 255, 0.9), transparent);
+  box-shadow: 0 0 16px rgba(76, 141, 255, 0.8);
+}
+
+main[data-theme='home'] .shadow-glow {
+  box-shadow: 0 0 24px rgba(76, 141, 255, 0.25);
+}
+
 body {
   @apply font-sans antialiased;
   background-color: var(--bg);
