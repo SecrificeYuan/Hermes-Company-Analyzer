@@ -8,11 +8,11 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Quote, RotateCcw, Swords } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import { CharacterCard } from '@/components/xray/CharacterCard'
 import { EvidenceDrawer } from '@/components/xray/EvidenceDrawer'
 import { CompareSelector } from './CompareSelector'
 import { BattleLoading } from './BattleLoading'
+import { ProLoading } from './ProLoading'
 import { CompareVerdictBar } from './CompareVerdictBar'
 import { DualRadar } from './DualRadar'
 import { LlmPlaceholder } from './LlmPlaceholder'
@@ -43,18 +43,6 @@ async function fetchPair(pick: Record<Slot, string>): Promise<Pair> {
     }),
   )
   return { A: a, B: b }
-}
-
-function LoadingSkeleton() {
-  return (
-    <div className="mt-6 space-y-6">
-      <Skeleton className="h-20 w-full rounded-card" />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Skeleton className="h-72 rounded-card" />
-        <Skeleton className="h-72 rounded-card" />
-      </div>
-    </div>
-  )
 }
 
 export function CompareClient({ initialPick }: { initialPick: CompareSelection | null }) {
@@ -160,7 +148,7 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
         </div>
       )}
 
-      {loading && (mode === 'pro' ? <LoadingSkeleton /> : <BattleLoading />)}
+      {loading && (mode === 'pro' ? <ProLoading /> : <BattleLoading />)}
 
       {!loading && !error && result && (mode === 'pro'
         ? <ProFlow a={result.A} b={result.B} />
