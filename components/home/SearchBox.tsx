@@ -130,7 +130,7 @@ export function SearchBox({ onPick }: { onPick: (company: ListedCompany) => void
       </div>
 
       {open && (
-        <div className="glass-card absolute inset-x-0 top-full z-30 mt-2 overflow-hidden">
+        <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-80 overflow-y-auto rounded-card border border-ink-edge bg-ink-card shadow-xl">
           {items.map((c, i) => (
             <button
               key={c.id}
