@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CharacterPanel } from '@/components/xray/CharacterPanel'
 import { EvidenceDrawer } from '@/components/xray/EvidenceDrawer'
-import { CompareSelector } from './CompareSelector'
+import { CompareSelector, type SlotPick } from './CompareSelector'
 import { BattleLoading } from './BattleLoading'
 import { ProLoading } from './ProLoading'
 import { CompareVerdictBar } from './CompareVerdictBar'
@@ -21,6 +21,7 @@ import { RiskCompare } from './RiskCompare'
 import { TrendCompare } from './TrendCompare'
 import { compareVerdict } from '@/lib/analysis/compare-verdict'
 import type { CompareSelection } from '@/lib/compare-params'
+import type { SnapshotSubject } from '@/lib/data/snapshot-subjects'
 import type { ListedCompany } from '@/lib/data/eastmoney'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
@@ -50,7 +51,7 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
   const mode = useMode()
   const terms = getTerms(mode).compare
 
-  const [pick, setPick] = useState<Record<Slot, ListedCompany | null>>({ A: null, B: null })
+  const [pick, setPick] = useState<Record<Slot, SlotPick | null>>({ A: null, B: null })
   const [result, setResult] = useState<Pair | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -78,7 +79,10 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
         try {
           const res = await fetch(`/api/search?q=${encodeURIComponent(code)}`)
           const data = (await res.json()) as { found: boolean; company?: ListedCompany }
-          if (data.found && data.company) setPick((p) => ({ ...p, [slot]: data.company! }))
+          if (data.found && data.company) {
+            const c = data.company
+            setPick((p) => ({ ...p, [slot]: { id: c.id, name: c.name, sub: c.stockCode } }))
+          }
         } catch {
           /* 名称回填失败不影响对战结果 */
         }
@@ -89,6 +93,11 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
   }, [])
 
   const sameCompany = pick.A !== null && pick.A.id === pick.B?.id
+
+  // 快照主体：占位注册表条目映射为宽松 SlotPick（sub=身份标签），数据由 slug 分支的健康评估管线产出
+  const handlePickSnapshot = useCallback((slot: Slot, subject: SnapshotSubject) => {
+    setPick((p) => ({ ...p, [slot]: { id: subject.id, name: subject.name, sub: subject.tag } }))
+  }, [])
 
   const handleRun = () => {
     if (!pick.A || !pick.B) return
@@ -122,7 +131,8 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
 
       <CompareSelector
         value={pick}
-        onChange={(slot, company) => setPick((p) => ({ ...p, [slot]: company }))}
+        onChange={(slot, next) => setPick((p) => ({ ...p, [slot]: next }))}
+        onPickSnapshot={handlePickSnapshot}
         onRun={handleRun}
         loading={loading}
         sameCompany={sameCompany}

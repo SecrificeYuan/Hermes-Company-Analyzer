@@ -1,16 +1,20 @@
 import { getXRay } from '@/lib/get-xray'
 import { CompanyNotFoundError } from '@/lib/data/fetcher'
+import { findCompany, getCompanyHealth } from '@/lib/data/company-health'
+import { healthToXray } from '@/lib/data/health-xray'
 import { NextResponse } from 'next/server'
 
 /**
  * 统一出参接口：GET /api/company/:id/xray → CompanyXRay
- * 前端（含 compare 页）与第三方调用的唯一 HTTP 入口。
+ * 6 位代码=上市公司实时；slug=非上市快照主体（健康评估管线，同报告页语义）。
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   try {
-    const xray = await getXRay(id)
-    return NextResponse.json(xray)
+    if (/^\d{6}$/.test(id)) return NextResponse.json(await getXRay(id))
+    const company = await findCompany(id)
+    if (!company) return NextResponse.json({ error: 'COMPANY_NOT_FOUND', id }, { status: 404 })
+    return NextResponse.json(healthToXray(await getCompanyHealth(company)))
   } catch (e) {
     if (e instanceof CompanyNotFoundError) {
       return NextResponse.json({ error: 'COMPANY_NOT_FOUND', id }, { status: 404 })
