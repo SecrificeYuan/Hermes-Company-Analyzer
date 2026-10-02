@@ -5,21 +5,7 @@ import dangerJson from '@/data/mock/company-danger.json'
 import warningJson from '@/data/mock/company-warning.json'
 import healthyJson from '@/data/mock/company-healthy.json'
 import type { CompanyXRay, RawCompanyData, TimelineEvent } from '@/lib/types'
-
-function makeXray(overrides: Partial<CompanyXRay> = {}): CompanyXRay {
-  return {
-    id: 't', name: '测试', industry: '测试', generatedAt: '', asOf: '',
-    overallRisk: 'yellow', riskScore: 50,
-    hp: { score: 50, label: '', cashFlow: 0, debtRatio: 50, trend: [] },
-    def: { score: 50, label: '', pledgeRatio: 10, assetCoverage: 1 },
-    atk: { score: 10, label: '', lawsuitCount: 0, executionAmount: 0 },
-    morale: { score: 50, label: '', avgTone: 0, trend: [] },
-    hiddenStatus: [], timeline: [],
-    graph: { nodes: [], links: [] },
-    verdict: '', advice: '',
-    ...overrides,
-  }
-}
+import { makeXray } from './fixtures'
 
 const legalTimeline = (n: number): TimelineEvent[] =>
   Array.from({ length: n }, (_, i) => ({
