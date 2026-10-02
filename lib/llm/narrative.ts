@@ -68,7 +68,7 @@ export function parseActionAdvice(
   if (!Array.isArray(items)) return null
   if (items.length < 3 || items.length > 5) return null
   if (!items.every((it) => typeof it === 'string' && it.trim())) return null
-  if (xray && !traceablePercentages(items as string[], xray)) return null
+  if (xray && !items.every((it) => assertPercentTraceable(it as string, xray))) return null
 
   return {
     scenario: scenario.trim(),
@@ -94,12 +94,15 @@ function collectTraceableNumbers(xray: CompanyXRay): Set<string> {
   return set
 }
 
-function traceablePercentages(items: string[], xray: CompanyXRay): boolean {
+/**
+ * 百分数可溯源守卫：文本中出现的每个百分数，其数字必须能在面板数据中找到出处
+ * （血条/护甲分 + 命中信号证据文本中的数字）。无百分数视为通过。
+ * 叙事层与 verdict 润色路径共用。
+ */
+export function assertPercentTraceable(text: string, xray: CompanyXRay): boolean {
   const legal = collectTraceableNumbers(xray)
-  for (const it of items) {
-    for (const m of it.matchAll(/(\d+(?:\.\d+)?)%/g)) {
-      if (!legal.has(m[1])) return false
-    }
+  for (const m of text.matchAll(/(\d+(?:\.\d+)?)%/g)) {
+    if (!legal.has(m[1])) return false
   }
   return true
 }

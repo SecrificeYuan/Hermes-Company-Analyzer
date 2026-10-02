@@ -53,8 +53,7 @@ describe('lib/get-xray 叙事层接线', () => {
     expect(xray.verdict).toBeTruthy()
   })
 
-  it('verdict 润色风险档被模型改成 green → 回退模板', async () => {
-    llmAvailableMock.mockReturnValue(true)
+  it('verdict 润色风险档被模型改成 green → 回退模板', async () => {    llmAvailableMock.mockReturnValue(true)
     chatOnceMock.mockResolvedValue(
       chatResult(JSON.stringify({ verdict: '改过的结论', advice: '改过的建议', overallRisk: 'green' })),
     )
@@ -63,6 +62,47 @@ describe('lib/get-xray 叙事层接线', () => {
     expect(xray.overallRisk).not.toBe('green')
     expect(xray.verdict).not.toBe('改过的结论')
     expect(xray.advice).not.toBe('改过的建议')
+  })
+
+  it('verdict 润色文本含面板不存在的百分数（99%）→ 回退模板', async () => {
+    llmAvailableMock.mockReturnValue(true)
+    chatOnceMock.mockResolvedValue(
+      chatResult(
+        JSON.stringify({
+          verdict: '实际血条 99%，稳得很',
+          advice: '随便买',
+          overallRisk: 'red',
+        }),
+      ),
+    )
+    const { getXRay } = await import('./get-xray')
+    const xray = await getXRay('mock-danger')
+    expect(xray.verdict).not.toContain('99%')
+    expect(xray.advice).not.toBe('随便买')
+  })
+
+  it('verdict 润色文本百分数可溯源（血条真实分数）→ 采用润色结果', async () => {
+    llmAvailableMock.mockReturnValue(true)
+    const { getXRay } = await import('./get-xray')
+    // 先用无 LLM 路径拿到模板，读出血条真实分数
+    llmAvailableMock.mockReturnValue(false)
+    const template = await getXRay('mock-danger')
+    llmAvailableMock.mockReturnValue(true)
+    const hpScore = template.hp.score
+    const refinedVerdict = `润色后的结论：血条仅 ${hpScore}%，风险极高`
+    const refinedAdvice = '润色后的建议：立即止损'
+    chatOnceMock.mockImplementation(async ({ messages }: { messages: { role: string; content: string | null }[] }) => {
+      const sys = messages.find((m) => m.role === 'system')?.content ?? ''
+      // 只响应 verdict 润色调用（行动建议调用的 system 含「行动项」）
+      if (sys.includes('行动项')) return null
+      return chatResult(
+        JSON.stringify({ verdict: refinedVerdict, advice: refinedAdvice, overallRisk: template.overallRisk }),
+      )
+    })
+    // 换 scenario 避开模板缓存 key
+    const xray = await getXRay('mock-danger', '尽调')
+    expect(xray.verdict).toBe(refinedVerdict)
+    expect(xray.advice).toBe(refinedAdvice)
   })
 
   it('scenario 传入 + 合法 nextSteps JSON → nextSteps 存在；同 id 不同 scenario 缓存不共享', async () => {

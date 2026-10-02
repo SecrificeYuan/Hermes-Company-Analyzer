@@ -45,6 +45,14 @@ describe('lib/llm/narrative', () => {
     expect(parseActionAdvice('{"scenario":"s","items":["a","b",""]}', 'm')).toBeNull()
   })
 
+  it('caveat 缺失时回退默认诚实标注「历史不代表未来」，不拒绝结果', async () => {
+    const { parseActionAdvice } = await import('./narrative')
+    const raw = JSON.stringify({ scenario: 's', items: ['a', 'b', 'c'] })
+    const ns = parseActionAdvice(raw, 'm')
+    expect(ns).not.toBeNull()
+    expect(ns?.caveat).toBe('历史不代表未来')
+  })
+
   it('数字可溯源守卫：条目中的百分数必须能在面板数据中找到，否则拒绝', async () => {
     const { parseActionAdvice } = await import('./narrative')
     // hp.score=12 → "12%" 可溯源，"7%" 无出处

@@ -2,7 +2,7 @@ import { analyze } from '@/lib/analysis/analyze'
 import { applyVerdictRefinement } from '@/lib/analysis/verdict'
 import { fetchRawCompany } from '@/lib/data/fetcher'
 import { chatOnce, llmAvailable } from '@/lib/llm/client'
-import { buildActionAdviceMessages, parseActionAdvice } from '@/lib/llm/narrative'
+import { buildActionAdviceMessages, parseActionAdvice, assertPercentTraceable } from '@/lib/llm/narrative'
 import type { CompanyXRay } from '@/lib/types'
 
 const xrayCache = new Map<string, { data: CompanyXRay; expiresAt: number }>()
@@ -62,6 +62,8 @@ async function enrichWithNarrative(xray: CompanyXRay, scenario?: string): Promis
       }
       const c = candidate as { verdict?: unknown; advice?: unknown; overallRisk?: unknown }
       if (typeof c.verdict !== 'string' || typeof c.advice !== 'string') return
+      // 数字可溯源守卫：润色文本中的百分数必须出自面板数据，否则整体回退模板
+      if (!assertPercentTraceable(c.verdict, xray) || !assertPercentTraceable(c.advice, xray)) return
       const refined = applyVerdictRefinement(
         { verdict: xray.verdict, advice: xray.advice },
         xray.overallRisk,
