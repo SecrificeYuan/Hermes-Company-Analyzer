@@ -13,6 +13,8 @@ import { scoreColor } from '@/lib/theme'
 import { useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
+import type { CompanyHealth } from '@/lib/company'
+import { listingLabels } from '@/lib/company'
 
 const RISK_META = {
   green: { label: '低风险 · GREEN', Icon: ShieldCheck, badge: 'safe' as const },
@@ -45,7 +47,7 @@ function DimRow({ label, score, sub, unavailable = false }: { label: string; sco
 }
 
 /** LITE 角色横幅：左右两栏——左栏身份/结论/HP/维度条，右栏雷达 + 隐藏状态（规格 §3.2 紧凑版式） */
-export function CharacterCard({ xray }: { xray: CompanyXRay }) {
+export function CharacterCard({ xray, health }: { xray: CompanyXRay; health?: CompanyHealth }) {
   const terms = getTerms('lite')
   const meta = RISK_META[xray.overallRisk]
 
@@ -61,17 +63,19 @@ export function CharacterCard({ xray }: { xray: CompanyXRay }) {
             <div className="min-w-0 flex-1">
               <div className="truncate text-lg font-bold text-slate-50">{xray.name}</div>
               <div className="mt-0.5 font-mono text-[11px] text-slate-500">
-                {xray.stockCode ?? 'UNLISTED'} · {xray.industry}
+                {health ? listingLabels[health.company.listing] : xray.stockCode ?? 'UNLISTED'} · {xray.industry}
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <Badge variant={meta.badge} className="gap-1.5 px-2.5 py-0.5 text-[11px]">
+                <Badge variant={health ? 'warn' : meta.badge} className="gap-1.5 px-2.5 py-0.5 text-[11px]">
                   <meta.Icon className="h-3 w-3" />
-                  {meta.label}
+                  {health ? '健康度待评估' : meta.label}
                 </Badge>
-                <span className="flex items-baseline gap-1">
-                  <StatNumber value={xray.riskScore} className="text-xl font-bold text-slate-100" duration={1.2} />
-                  <span className="font-mono text-[9px] tracking-[0.2em] text-slate-500">{terms.riskScoreCaption}</span>
-                </span>
+                {!health && (
+                  <span className="flex items-baseline gap-1">
+                    <StatNumber value={xray.riskScore} className="text-xl font-bold text-slate-100" duration={1.2} />
+                    <span className="font-mono text-[9px] tracking-[0.2em] text-slate-500">{terms.riskScoreCaption}</span>
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -84,23 +88,29 @@ export function CharacterCard({ xray }: { xray: CompanyXRay }) {
             </p>
           </div>
 
-          <HealthBar hp={xray.hp} />
+          {health ? (
+            <div className="rounded-btn border border-warn/30 px-4 py-3 text-sm text-warn">财务、司法、股权和舆情资料不完整，暂不生成健康分数。</div>
+          ) : (
+            <HealthBar hp={xray.hp} />
+          )}
 
-          <div className="space-y-3">
-            <DimRow label={terms.defLabel} score={xray.def.score} sub={`${xray.def.label} · 质押 ${xray.def.pledgeRatio}%`} />
-            <DimRow
-              label={terms.atkLabel}
-              score={xray.atk.score}
-              sub={xray.atk.available === false ? '司法数据暂未接入' : `${xray.atk.label} · 诉讼 ${xray.atk.lawsuitCount} 起 / 被执行 ${formatWan(xray.atk.executionAmount)}`}
-              unavailable={xray.atk.available === false}
-            />
-            <DimRow
-              label={terms.moraleLabel}
-              score={xray.morale.score}
-              sub={xray.morale.available === false ? '东方财富新闻加载中' : `${xray.morale.label} · tone ${xray.morale.avgTone}`}
-              unavailable={xray.morale.available === false}
-            />
-          </div>
+          {!health && (
+            <div className="space-y-3">
+              <DimRow label={terms.defLabel} score={xray.def.score} sub={`${xray.def.label} · 质押 ${xray.def.pledgeRatio}%`} />
+              <DimRow
+                label={terms.atkLabel}
+                score={xray.atk.score}
+                sub={xray.atk.available === false ? '司法数据暂未接入' : `${xray.atk.label} · 诉讼 ${xray.atk.lawsuitCount} 起 / 被执行 ${formatWan(xray.atk.executionAmount)}`}
+                unavailable={xray.atk.available === false}
+              />
+              <DimRow
+                label={terms.moraleLabel}
+                score={xray.morale.score}
+                sub={xray.morale.available === false ? '东方财富新闻加载中' : `${xray.morale.label} · tone ${xray.morale.avgTone}`}
+                unavailable={xray.morale.available === false}
+              />
+            </div>
+          )}
 
           <div className="mt-auto">
             <DataSourceBadge sources={xray.sources} />
@@ -110,7 +120,11 @@ export function CharacterCard({ xray }: { xray: CompanyXRay }) {
         {/* 右栏：小雷达 + 隐藏状态 */}
         <div className="flex min-w-0 flex-col">
           <div className="mb-2 font-mono text-[10px] tracking-[0.25em] text-slate-500">{terms.cardTitles.radar}</div>
-          <AttributeRadar xray={xray} height={220} />
+          {health ? (
+            <p className="text-xs text-slate-400">资料不足，暂不生成雷达图。</p>
+          ) : (
+            <AttributeRadar xray={xray} height={220} />
+          )}
           <div className="mt-4">
             <div className="mb-2.5 flex items-center justify-between font-mono text-[11px] tracking-[0.25em] text-slate-500">
               {terms.hiddenTitle}

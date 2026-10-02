@@ -6,7 +6,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'HERMES · 公司透视',
-  description: '输入公司名，30 秒生成一张公司透视报告：财务/司法/舆情/股权四维尽调一次看清。',
+  description: '搜索上市与未上市企业，通过公开证据评估公司健康状况与投资尽调缺口。',
 }
 
 export const viewport: Viewport = {

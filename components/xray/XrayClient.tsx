@@ -33,6 +33,7 @@ import type { DetailSectionId, GlanceSlot } from '@/lib/narrative'
 import { useMode } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay, NarrativeKey } from '@/lib/types'
+import type { CompanyHealth } from '@/lib/company'
 
 /** 统一出场缓动：ease-out 长尾，避免线性/突变感 */
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
@@ -67,7 +68,7 @@ function slotTitle(slot: GlanceSlot, terms: ReturnType<typeof getTerms>): string
 }
 
 /** 报告页客户端容器：头（版式无关）→ 速览层（版式驱动）→ 详读层（双密度，规格 §3） */
-export function XrayClient({ xray }: { xray: CompanyXRay }) {
+export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: CompanyHealth }) {
   const mode = useMode()
   const terms = getTerms(mode)
   const { snapshot: sentiment, loading: sentimentLoading, slow: sentimentSlow } = useSentiment(xray.id)
@@ -81,15 +82,17 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
     }
     : xray
   const narrative = narrativeOf(xray)
-  const layout = glanceLayout(xray, narrative)
+  const layout = health
+    ? { c: 'radar' as const, rest: ['finance', 'equity', 'legal', 'sentiment', 'network'] as GlanceSlot[] }
+    : glanceLayout(xray, narrative)
   const order = detailOrder(layout)
 
   const proCharts: Record<GlanceSlot, ReactNode> = {
-    finance: <CashFlowChart hp={displayXray.hp} height={280} />,
-    equity: <PledgeSummary xray={displayXray} />,
-    legal: <LawsuitHeatmap timeline={displayXray.timeline} available={displayXray.atk.available !== false} height={280} />,
-    sentiment: <SentimentCurve morale={displayXray.morale} height={280} loading={sentimentLoading} slow={sentimentSlow} message={sentiment?.message} />,
-    network: <RelationGraph graph={displayXray.graph} centerLabel={displayXray.name} height={280} />,
+    finance: health && !health.years.length ? <MissingMetric label="完整年度财报" /> : <CashFlowChart hp={displayXray.hp} height={280} />,
+    equity: health && health.metrics.pledgeRatio === null ? <MissingMetric label="股权质押" /> : <PledgeSummary xray={displayXray} />,
+    legal: health && health.metrics.lawsuitAnnouncements === null ? <MissingMetric label="司法记录" /> : <LawsuitHeatmap timeline={displayXray.timeline} available={displayXray.atk.available !== false} height={280} />,
+    sentiment: health ? <MissingMetric label="可核实的舆情记录" /> : <SentimentCurve morale={displayXray.morale} height={280} loading={sentimentLoading} slow={sentimentSlow} message={sentiment?.message} />,
+    network: health ? <MissingMetric label="关联网络" /> : <RelationGraph graph={displayXray.graph} centerLabel={displayXray.name} height={280} />,
   }
 
   return (
@@ -104,7 +107,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
           <Button asChild variant="ghost" size="sm">
             <Link href="/compare"><GitCompareArrows /> 双公司对比</Link>
           </Button>
-          <ShareCard xray={xray} />
+          {!health && <ShareCard xray={xray} />}
         </div>
       </div>
       )}
@@ -112,12 +115,12 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
       {/* 头：PRO 元信息条；LITE 角色横幅 + 右侧五维紧凑卡竖列 */}
       {mode === 'pro' ? (
         <motion.div variants={rise} custom={0} initial="hidden" animate="show">
-          <MetaStrip xray={displayXray} />
+          <MetaStrip xray={displayXray} health={health} />
         </motion.div>
       ) : (
         <div className="grid min-h-0 flex-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)] lg:grid-rows-[minmax(0,1fr)]">
           <motion.div variants={rise} custom={0} initial="hidden" animate="show" className="min-h-0 min-w-0 lg:overflow-y-auto">
-            <CharacterCard xray={displayXray} />
+            <CharacterCard xray={displayXray} health={health} />
           </motion.div>
           <div className="min-h-0 min-w-0 space-y-4 overflow-y-auto pr-1">
             {order.map((id, i) => {
@@ -132,8 +135,8 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         </div>
       )}
 
-      {/* 行情与资金区（PRO 专属） */}
-      {mode === 'pro' && (
+      {/* 行情与资金区（PRO 专属；资料缺口主体不展示行情） */}
+      {mode === 'pro' && !health && (
         <motion.div variants={riseInView} custom={0} initial="hidden" whileInView="show" viewport={viewport} className="mt-6">
           <MarketZone
             xray={displayXray}
@@ -159,7 +162,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
                 </CardHeader>
                 <CardContent>
                   {layout.c === 'radar'
-                    ? <AttributeRadar xray={displayXray} height={560} />
+                    ? health ? <MissingEvidencePanel health={health} /> : <AttributeRadar xray={displayXray} height={560} />
                     : proCharts[layout.c]}
                 </CardContent>
               </Card>
@@ -174,7 +177,9 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
             ))}
             {/* 右下角补位：AI 速览入口（方案 C） */}
             <motion.div variants={riseInView} custom={1 + layout.rest.length} initial="hidden" whileInView="show" viewport={viewport} className="h-full">
-              <AiGlanceCard xray={displayXray} />
+              {health
+                ? <Card className="h-full"><CardHeader><CardTitle>AI 速览</CardTitle></CardHeader><CardContent><MissingMetric label="AI 分析所需证据" /></CardContent></Card>
+                : <AiGlanceCard xray={displayXray} />}
             </motion.div>
           </div>
         )}
@@ -192,7 +197,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
             {order.map((id, i) => (
             <motion.div key={id} variants={riseInView} custom={i} initial="hidden" whileInView="show" viewport={viewport}>
               <SectionShell id={id} index={i + 1} title={terms.sections[id]}>
-                <SectionBody id={id} xray={displayXray} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} />
+                <SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} />
               </SectionShell>
             </motion.div>
             ))}
@@ -214,16 +219,25 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
 function SectionBody({
   id,
   xray,
+  health,
   sentiment,
   sentimentLoading,
   sentimentSlow,
 }: {
   id: DetailSectionId
   xray: CompanyXRay
+  health?: CompanyHealth
   sentiment?: import('@/lib/types').SentimentSnapshot
   sentimentLoading: boolean
   sentimentSlow: boolean
 }) {
+  if (health && id === 'evidence') return <MissingEvidencePanel health={health} />
+  if (health && id === 'financial') return health.years.length ? <FinancialSection xray={xray} health={health} /> : <MissingMetric label="该企业的完整年度财务报表" />
+  if (health && id === 'equity') return <MissingMetric label="该企业的完整股权结构与控制关系" />
+  if (health && id === 'legal') return <MissingMetric label="该企业的完整司法与执行记录" />
+  if (health && id === 'sentiment') return <MissingMetric label="可核实的舆情记录" />
+  if (health && id === 'network') return <MissingMetric label="关联实体与控制关系" />
+  if (health && id === 'ai') return <MissingMetric label="足够支撑 AI 分析的证据" />
   switch (id) {
     case 'financial': return <FinancialSection xray={xray} />
     case 'equity': return <EquitySection xray={xray} />
@@ -233,4 +247,19 @@ function SectionBody({
     case 'evidence': return <EvidenceSection xray={xray} />
     case 'ai': return <AiSection />
   }
+}
+
+function MissingMetric({ label }: { label: string }) {
+  return <p className="py-8 text-center text-sm text-slate-400">{label}待核实；缺失数据不按零风险处理。</p>
+}
+
+function MissingEvidencePanel({ health }: { health: CompanyHealth }) {
+  return <div className="space-y-4 text-sm text-slate-300">
+    <p>当前可核实的资料不足以给出完整健康评分或投资回报率。{health.company.identity === 'lead' ? '企业法律主体仍待工商登记核对。' : ''}</p>
+    <dl className="grid gap-3 sm:grid-cols-2">
+      {([['统一社会信用代码线索', health.company.creditCode], ['注册地区', health.company.region], ['行业', health.company.industry], ['成立日期', health.company.foundedAt], ['公司简介', health.company.description]] as const).map(([label, value]) => <div key={label} className="border-b border-edge pb-2"><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 break-words">{value || '待核实'}</dd></div>)}
+    </dl>
+    <p className="text-xs text-warn">待补充：{health.gaps.join('；')}</p>
+    {health.sources.map((source, index) => <p key={`${source.url}-${index}`}><a href={source.url} target="_blank" rel="noopener noreferrer" className="text-neon hover:underline">{source.title}</a> · {source.state === 'ok' ? '已读取' : source.state === 'empty' ? '无匹配' : '访问受限或暂不可用'}<span className="block text-xs text-slate-500">{source.note}</span></p>)}
+  </div>
 }

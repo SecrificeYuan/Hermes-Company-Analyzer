@@ -29,7 +29,7 @@ export function financialYears(summaryRows: unknown, cashRows: unknown): Financi
     // 流动比率银行不披露（LD 恒为 null），缺省时保留该年、字段留空
     const currentRatio = finite(income.LD)
     if (revenue === null || netProfit === null || operatingCashFlow === null || debtRatio === null) continue
-    if (revenue < 0 || debtRatio < 0 || debtRatio > 100) continue
+    if (revenue < 0 || debtRatio < 0) continue
     if (currentRatio !== null && currentRatio < 0) continue
     years.push({
       year,

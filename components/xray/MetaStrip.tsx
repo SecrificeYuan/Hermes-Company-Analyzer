@@ -15,6 +15,7 @@ import { useTencentQuote } from '@/lib/hooks/use-tencent-quote'
 import { useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
+import type { CompanyHealth } from '@/lib/company'
 
 const RISK_META = {
   green: { label: '低风险', en: 'CLEAN', Icon: ShieldCheck },
@@ -69,17 +70,18 @@ function CopyBtn({ text }: { text: string }) {
  * 左侧白底双层六边形"印章"（风险色描边 + 微阴影悬浮）+ 主数据区（标题 / 时间行 /
  * 两列元信息 / HASH 块 / 结论）+ 右列评分 + 底部横排操作按钮。无多余边框分隔线。
  */
-export function MetaStrip({ xray }: { xray: CompanyXRay }) {
+export function MetaStrip({ xray, health }: { xray: CompanyXRay; health?: CompanyHealth }) {
   const meta = RISK_META[xray.overallRisk]
   const t = useTokens()
   const terms = getTerms('pro')
   const color = t.riskColor[xray.overallRisk]
   const r = xray.registry
-  const quote = useTencentQuote(xray.stockCode)
+  const quote = useTencentQuote(health ? undefined : xray.stockCode)
   const quoteColor = quote && quote.change > 0 ? t.colors.danger : quote && quote.change < 0 ? t.colors.safe : t.colors.textDim
 
   /** 左侧标签等宽加粗，值直接展示——微步"文件大小 / 文件类型"式 */
   const kv: { k: string; v: React.ReactNode }[] = [
+    ...(r ? [] : health?.company.creditCode ? [{ k: '信用代码线索', v: health.company.creditCode }] : []),
     { k: '所属行业', v: xray.industry },
     ...(r ? [{ k: terms.metaStrip.foundedAt, v: r.foundedAt }] : []),
     ...(r ? [{ k: terms.metaStrip.registeredCapital, v: formatWan(r.registeredCapital) }] : []),
@@ -136,7 +138,7 @@ export function MetaStrip({ xray }: { xray: CompanyXRay }) {
                 {xray.stockCode ?? 'UNLISTED'} · {xray.industry}
               </span>
               {/* 健康度小环（原右栏融入标题行） */}
-              <span className="ml-1 inline-flex items-center gap-1.5 self-center" title={terms.healthLabel}>
+              {!health && <span className="ml-1 inline-flex items-center gap-1.5 self-center" title={terms.healthLabel}>
                 <span
                   className="flex h-9 w-9 items-center justify-center rounded-full"
                   style={{ background: `conic-gradient(${color} 0 ${xray.hp.score * 3.6}deg, ${t.colors.edge} ${xray.hp.score * 3.6}deg 360deg)` }}
@@ -146,7 +148,7 @@ export function MetaStrip({ xray }: { xray: CompanyXRay }) {
                   </span>
                 </span>
                 <span className="font-mono text-[10px] tracking-wider text-slate-600">{terms.healthLabel}</span>
-              </span>
+              </span>}
             </div>
 
             {/* 时间行（微步"首次提交 / 末次提交 / 末次分析"式） */}
