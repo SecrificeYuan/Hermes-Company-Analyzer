@@ -4,7 +4,8 @@ import { motion } from 'framer-motion'
 import { StatNumber } from './StatNumber'
 import { formatWan } from '@/lib/utils'
 import { scoreColor } from '@/lib/theme'
-import { useTokens } from '@/lib/theme/use-tokens'
+import { useTokens, useMode } from '@/lib/theme/use-tokens'
+import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
 
 /**
@@ -12,13 +13,15 @@ import type { CompanyXRay } from '@/lib/types'
  */
 export function HealthBar({ hp }: { hp: CompanyXRay['hp'] }) {
   const t = useTokens()
+  const mode = useMode()
+  const terms = getTerms(mode)
   const color = scoreColor(t, hp.score)
   const critical = hp.score < 30
 
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between font-mono">
-        <span className="text-xs tracking-wider text-slate-400">HP · 财务血量</span>
+        <span className="text-xs tracking-wider text-slate-400">{terms.healthLabel}</span>
         <span className="text-xs" style={{ color }}>{hp.label}</span>
       </div>
       <div
