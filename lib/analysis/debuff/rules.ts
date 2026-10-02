@@ -8,6 +8,10 @@ interface DebuffRule {
   label: string
   severity: Severity
   description: string
+  /** 运行期按证据定 severity（如质押按档位）：缺省用 severity */
+  severityOf?: (evidence: Evidence) => Severity
+  /** 层数刻度（v1.1 增量）：规则触发时附到 HiddenStatus.tier */
+  tierOf?: (evidence: Evidence) => { current: number; max: number } | undefined
   /** 返回触发证据；空数组/null = 不触发。没有证据就不触发，这是可信度底线。 */
   detect(raw: RawCompanyData, asOf: Date): Evidence | null
 }
@@ -36,14 +40,19 @@ export const RULES: DebuffRule[] = [
     id: 'pledge-pierce',
     label: '股权质押穿透',
     severity: 'high',
-    description: '控股股东质押比例超 70%，股价下跌可能引发平仓与控制权旁落',
+    description: '控股股东质押达 30% 即入列，70% 以上随时可能被强制平仓、公司易主',
+    severityOf: (evidence) => (Number(evidence[0]?.detail.match(/(\d+)%/)?.[1] ?? 0) >= 70 ? 'high' : 'mid'),
+    tierOf: (evidence) => {
+      const amount = Number(evidence[0]?.detail.match(/(\d+)%/)?.[1] ?? 0)
+      return amount >= 70 ? { current: 3, max: 3 } : amount >= 40 ? { current: 2, max: 3 } : { current: 1, max: 3 }
+    },
     detect(raw) {
-      const events = pledgeEvents(raw).filter((p) => (p.amount ?? 0) >= 70)
+      const events = pledgeEvents(raw).filter((p) => (p.amount ?? 0) >= 30)
       if (events.length === 0) return null
       return events.map((p) => ({
         source: '股权质押',
         date: p.date,
-        detail: `${p.name}（${p.role}）累计质押比例达 ${p.amount}%`,
+        detail: `${p.name}（${p.role ?? '股东'}）累计质押比例达 ${p.amount}%`,
       }))
     },
   },
@@ -104,8 +113,9 @@ export function detectHiddenStatus(raw: RawCompanyData, asOf: Date): HiddenStatu
     results.push({
       id: rule.id,
       label: rule.label,
-      severity: rule.severity,
+      severity: rule.severityOf ? rule.severityOf(evidence) : rule.severity,
       description: rule.description,
+      tier: rule.tierOf ? rule.tierOf(evidence) : undefined,
       evidence,
     })
   }
