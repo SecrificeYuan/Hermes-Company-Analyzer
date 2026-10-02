@@ -2,47 +2,53 @@
 
 import type { EChartsOption } from 'echarts'
 import { ChartEmpty, EChart } from './EChart'
-import { baseAxis, baseChartOption, colors } from '@/lib/theme/echarts-dark'
+import { baseAxisFor, baseChartOptionFor } from '@/lib/theme/echarts-themes'
+import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import { formatWan } from '@/lib/utils'
 import type { CompanyXRay } from '@/lib/types'
 
 /** 现金流趋势：渐变面积折线，负值段自动变红 */
 export function CashFlowChart({ hp }: { hp: CompanyXRay['hp'] }) {
+  const t = useTokens()
+  const mode = useMode()
+
   if (hp.trend.length === 0) return <ChartEmpty height={250} text="财务数据暂缺" />
 
   const labels = hp.labels ?? hp.trend.map((_, i) => `期${i + 1}`)
   const extent = Math.max(1, ...hp.trend.map((v) => Math.abs(v)))
+  const base = baseChartOptionFor(t)
+  const axis = baseAxisFor(t)
   const option: EChartsOption = {
-    ...baseChartOption,
+    ...base,
     tooltip: {
-      ...baseChartOption.tooltip,
+      ...base.tooltip,
       trigger: 'axis',
       valueFormatter: (v) => formatWan(Number(v)),
     },
     grid: { left: 8, right: 16, top: 24, bottom: 4, containLabel: true },
-    xAxis: { type: 'category', data: labels, ...baseAxis, boundaryGap: false },
-    yAxis: { type: 'value', ...baseAxis, axisLabel: { ...baseAxis.axisLabel, formatter: (v: number) => formatWan(v) } },
+    xAxis: { type: 'category', data: labels, ...axis, boundaryGap: false },
+    yAxis: { type: 'value', ...axis, axisLabel: { ...axis.axisLabel, formatter: (v: number) => formatWan(v) } },
     series: [
       {
         type: 'line',
         data: hp.trend,
         smooth: true,
         symbolSize: 7,
-        lineStyle: { width: 2.5, color: colors.neon },
-        itemStyle: { color: colors.neon },
+        lineStyle: { width: 2.5, color: t.colors.accent },
+        itemStyle: { color: t.colors.accent },
         areaStyle: {
           color: {
             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(0,229,255,0.35)' },
-              { offset: 1, color: 'rgba(0,229,255,0)' },
+              { offset: 0, color: `${t.colors.accent}59` },
+              { offset: 1, color: `${t.colors.accent}00` },
             ],
           },
         },
         markLine: {
           silent: true,
           symbol: 'none',
-          lineStyle: { color: colors.danger, type: 'dashed', opacity: 0.6 },
+          lineStyle: { color: t.colors.danger, type: 'dashed', opacity: 0.6 },
           data: [{ yAxis: 0 }],
           label: { show: false },
         },
@@ -53,9 +59,9 @@ export function CashFlowChart({ hp }: { hp: CompanyXRay['hp'] }) {
       show: false,
       min: -extent,
       max: extent,
-      inRange: { color: [colors.danger, colors.neon] },
+      inRange: { color: [t.colors.danger, t.colors.accent] },
       seriesIndex: 0,
     },
   }
-  return <EChart option={option} height={250} />
+  return <EChart option={option} height={250} theme={mode} />
 }

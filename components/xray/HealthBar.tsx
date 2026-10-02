@@ -3,14 +3,16 @@
 import { motion } from 'framer-motion'
 import { StatNumber } from './StatNumber'
 import { formatWan } from '@/lib/utils'
-import { scoreColor } from '@/lib/theme/tokens'
+import { scoreColor } from '@/lib/theme'
+import { useTokens } from '@/lib/theme/use-tokens'
 import type { CompanyXRay } from '@/lib/types'
 
 /**
  * HP 血条：从 0 平滑增长；低于 30% 时边框呼吸闪烁红光。
  */
 export function HealthBar({ hp }: { hp: CompanyXRay['hp'] }) {
-  const color = scoreColor(hp.score)
+  const t = useTokens()
+  const color = scoreColor(t, hp.score)
   const critical = hp.score < 30
 
   return (

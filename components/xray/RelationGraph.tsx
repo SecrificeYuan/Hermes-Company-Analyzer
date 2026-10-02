@@ -2,25 +2,30 @@
 
 import type { EChartsOption } from 'echarts'
 import { ChartEmpty, EChart } from './EChart'
-import { baseChartOption, colors } from '@/lib/theme/echarts-dark'
+import { baseChartOptionFor } from '@/lib/theme/echarts-themes'
+import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import type { CompanyXRay, GraphNode } from '@/lib/types'
-
-const NODE_COLOR: Record<GraphNode['type'], string> = {
-  company: colors.neon,
-  person: colors.grape,
-  court: colors.danger,
-  supplier: colors.warn,
-  media: colors.textDim,
-}
 
 /** 关系图谱：力导向布局，节点发光，风险边红色 */
 export function RelationGraph({ graph }: { graph: CompanyXRay['graph'] }) {
+  const t = useTokens()
+  const mode = useMode()
+
+  const NODE_COLOR: Record<GraphNode['type'], string> = {
+    company: t.colors.accent,
+    person: t.colors.grape,
+    court: t.colors.danger,
+    supplier: t.colors.warn,
+    media: t.colors.textDim,
+  }
+
   if (graph.nodes.length <= 1) return <ChartEmpty height={320} text="暂无关联实体" />
 
+  const base = baseChartOptionFor(t)
   const option: EChartsOption = {
-    ...baseChartOption,
+    ...base,
     tooltip: {
-      ...baseChartOption.tooltip,
+      ...base.tooltip,
       formatter: (p) => {
         const d = p as unknown as { dataType: string; data: { name?: string; label?: unknown } }
         return d.dataType === 'edge' ? String((d.data as { label?: string }).label ?? '') : String(d.data.name ?? '')
@@ -33,7 +38,7 @@ export function RelationGraph({ graph }: { graph: CompanyXRay['graph'] }) {
         roam: true,
         draggable: true,
         force: { repulsion: 320, edgeLength: [70, 130], gravity: 0.12 },
-        label: { show: true, color: colors.textMain, fontSize: 11, position: 'bottom' },
+        label: { show: true, color: t.colors.textMain, fontSize: 11, position: 'bottom' },
         data: graph.nodes.map((n) => ({
           id: n.id,
           name: n.name,
@@ -41,26 +46,26 @@ export function RelationGraph({ graph }: { graph: CompanyXRay['graph'] }) {
           itemStyle: {
             color: NODE_COLOR[n.type],
             shadowBlur: n.risk > 50 ? 18 : 8,
-            shadowColor: n.risk > 50 ? 'rgba(255,59,92,0.6)' : NODE_COLOR[n.type],
-            borderColor: 'rgba(255,255,255,0.25)',
+            shadowColor: n.risk > 50 ? `${t.colors.danger}99` : NODE_COLOR[n.type],
+            borderColor: t.colors.edge,
             borderWidth: 1,
           },
         })),
         links: graph.links.map((l) => ({
           source: l.source,
           target: l.target,
-          label: { show: true, formatter: l.label, color: colors.textDim, fontSize: 10 },
+          label: { show: true, formatter: l.label, color: t.colors.textDim, fontSize: 10 },
           lineStyle: {
-            color: l.risk ? colors.danger : 'rgba(0,229,255,0.35)',
+            color: l.risk ? t.colors.danger : `${t.colors.accent}59`,
             width: l.risk ? 2.5 : 1.2,
             curveness: 0.12,
             shadowBlur: l.risk ? 8 : 0,
-            shadowColor: colors.danger,
+            shadowColor: t.colors.danger,
           },
         })),
         emphasis: { focus: 'adjacency' },
       },
     ],
   }
-  return <EChart option={option} height={340} />
+  return <EChart option={option} height={340} theme={mode} />
 }

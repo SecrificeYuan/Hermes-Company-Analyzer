@@ -5,11 +5,13 @@ import { HealthBar } from './HealthBar'
 import { HiddenStatusList } from './HiddenStatusList'
 import { StatNumber } from './StatNumber'
 import { formatWan } from '@/lib/utils'
-import { scoreColor } from '@/lib/theme/tokens'
+import { scoreColor } from '@/lib/theme'
+import { useTokens } from '@/lib/theme/use-tokens'
 import type { CompanyXRay } from '@/lib/types'
 
 function DimRow({ label, score, sub }: { label: string; score: number; sub: string }) {
-  const color = scoreColor(score)
+  const t = useTokens()
+  const color = scoreColor(t, score)
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between font-mono text-[11px]">

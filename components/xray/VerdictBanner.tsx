@@ -5,7 +5,7 @@ import { AlertTriangle, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DataSourceBadge } from './DataSourceBadge'
 import { StatNumber } from './StatNumber'
-import { riskColor } from '@/lib/theme/tokens'
+import { useTokens } from '@/lib/theme/use-tokens'
 import type { CompanyXRay } from '@/lib/types'
 
 const RISK_META = {
@@ -16,8 +16,9 @@ const RISK_META = {
 
 /** 一句话诊断横幅：报告页的"标题党"，3 秒定调 */
 export function VerdictBanner({ xray }: { xray: CompanyXRay }) {
+  const t = useTokens()
   const meta = RISK_META[xray.overallRisk]
-  const color = riskColor[xray.overallRisk]
+  const color = t.riskColor[xray.overallRisk]
 
   return (
     <motion.header

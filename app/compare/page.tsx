@@ -7,7 +7,7 @@ import { ArrowLeft, Swords } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PRESET_COMPANIES } from '@/lib/presets'
-import { riskColor } from '@/lib/theme/tokens'
+import { useTokens } from '@/lib/theme/use-tokens'
 import type { CompanyXRay } from '@/lib/types'
 
 type Slot = 'A' | 'B'
@@ -17,6 +17,7 @@ type Slot = 'A' | 'B'
  * TODO(feat/frontend-xray)：叠加双雷达、风险分项 diff、胜负判定动画。
  */
 export default function ComparePage() {
+  const t = useTokens()
   const [pick, setPick] = useState<Record<Slot, string>>({ A: 'mock-healthy', B: 'mock-danger' })
   const [result, setResult] = useState<Record<Slot, CompanyXRay> | null>(null)
   const [loading, setLoading] = useState(false)
@@ -77,7 +78,7 @@ export default function ComparePage() {
         <div className="grid gap-6 md:grid-cols-2">
           {(['A', 'B'] as Slot[]).map((slot, i) => {
             const x = result[slot]
-            const color = riskColor[x.overallRisk]
+            const color = t.riskColor[x.overallRisk]
             return (
               <motion.section
                 key={slot}
