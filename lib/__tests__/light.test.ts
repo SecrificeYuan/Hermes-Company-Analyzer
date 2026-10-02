@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { deriveLight } from '@/lib/analysis/light'
+import { analyze } from '@/lib/analysis/analyze'
+import dangerJson from '@/data/mock/company-danger.json'
+import warningJson from '@/data/mock/company-warning.json'
+import healthyJson from '@/data/mock/company-healthy.json'
 import { LITE_BANNED_TERMS } from '@/lib/theme/terms'
-import type { HiddenStatus } from '@/lib/types'
+import type { HiddenStatus, RawCompanyData } from '@/lib/types'
+
+const raw = (j: unknown) => j as RawCompanyData
 
 const debuff = (over: Partial<HiddenStatus> = {}): HiddenStatus => ({
   id: 'x', label: '老板套现', severity: 'mid', description: '测试描述', evidence: [],
@@ -59,5 +65,21 @@ describe('deriveLight', () => {
         expect(`${c.headline}|${c.reason}|${c.saferAdvice ?? ''}`).not.toContain(term)
       }
     }
+  })
+})
+
+describe('analyze 挂灯（三档回归 + 灯断言）', () => {
+  it('healthy→绿灯能付；warning→黄灯带 saferAdvice；danger→红灯先别付', () => {
+    const h = analyze(raw(healthyJson))
+    expect(h.overallRisk).toBe('green')
+    expect(h.light).toMatchObject({ color: 'green', headline: '这钱能付' })
+    const w = analyze(raw(warningJson))
+    expect(w.overallRisk).toBe('yellow')
+    expect(w.light).toMatchObject({ color: 'yellow', headline: '能付，但换个付法' })
+    expect(w.light?.saferAdvice).toBeTruthy()
+    expect(w.hiddenStatus.find((d) => d.id === 'pledge-pierce')?.tier).toEqual({ current: 2, max: 3 })
+    const d = analyze(raw(dangerJson))
+    expect(d.overallRisk).toBe('red')
+    expect(d.light).toMatchObject({ color: 'red', headline: '先别付这钱' })
   })
 })
