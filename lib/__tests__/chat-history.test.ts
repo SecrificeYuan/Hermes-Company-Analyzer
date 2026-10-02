@@ -1,0 +1,36 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { getChatThreads, addChatThread, type ChatThread } from '@/lib/chat-history'
+
+function thread(id: string, at = 0): ChatThread {
+  return { id, title: id, at, messages: [{ role: 'user', content: `msg-${id}` }] }
+}
+
+describe('lib/chat-history', () => {
+  beforeEach(() => { window.localStorage.clear() })
+
+  it('空存储返回 []；新增后按 at 新→旧排序，上限 3 条', () => {
+    expect(getChatThreads()).toEqual([])
+    addChatThread(thread('a', 1)); addChatThread(thread('b', 2))
+    addChatThread(thread('c', 3)); addChatThread(thread('d', 4))
+    expect(getChatThreads().map((t) => t.id)).toEqual(['d', 'c', 'b'])
+  })
+
+  it('同 id 覆盖更新且置顶', () => {
+    addChatThread(thread('a', 1)); addChatThread(thread('b', 2))
+    addChatThread({ ...thread('a', 3), title: 'a2' })
+    const threads = getChatThreads()
+    expect(threads[0].id).toBe('a')
+    expect(threads[0].title).toBe('a2')
+    expect(threads).toHaveLength(2)
+  })
+
+  it('损坏 JSON 返回 [] 不抛异常', () => {
+    window.localStorage.setItem('hermes-chat-threads', '{broken')
+    expect(getChatThreads()).toEqual([])
+  })
+
+  it('非数组/元素缺字段被过滤', () => {
+    window.localStorage.setItem('hermes-chat-threads', JSON.stringify([{ id: 'ok', title: 't', at: 1, messages: [] }, { bad: true }]))
+    expect(getChatThreads()).toHaveLength(1)
+  })
+})
