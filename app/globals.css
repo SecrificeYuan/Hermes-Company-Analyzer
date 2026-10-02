@@ -40,7 +40,7 @@
 
 [data-theme='home'] {
   --bg: #070b14;
-  --card: rgba(16, 22, 37, 0.85);
+  --card: rgba(16, 22, 37, 0.6);
   --card-solid: #101625;
   --edge: #1e2a42;
   --accent: #4c8dff;

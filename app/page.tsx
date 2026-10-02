@@ -42,11 +42,11 @@ export default function HomePage() {
       </header>
 
       {/* Hero + 搜索/筛选 + 最近搜索 */}
-      <div className={`relative z-10 flex min-h-0 flex-1 flex-col items-center px-6 ${queryMode === 'filter' ? 'overflow-y-auto' : 'justify-center'}`}>
+      <div className={`pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col items-center px-6 ${queryMode === 'filter' ? 'overflow-y-auto' : 'justify-center'}`}>
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`shrink-0 text-center ${queryMode === 'filter' ? 'mt-10 mb-6' : 'mb-10'}`}
+          className={`pointer-events-auto shrink-0 text-center ${queryMode === 'filter' ? 'mt-10 mb-6' : 'mb-10'}`}
         >
           <div className="mb-4 font-mono text-[11px] tracking-[0.35em] text-neon/80">
             HERMES SYSTEM ONLINE
@@ -82,7 +82,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mb-10 flex w-full justify-center"
+            className="pointer-events-auto mb-10 flex w-full justify-center"
           >
             <FilterPanel />
           </motion.div>
@@ -94,13 +94,13 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="flex w-full max-w-xl justify-center"
+          className="pointer-events-auto flex w-full max-w-xl justify-center"
         >
           <SearchBox onPick={handlePick} />
         </motion.div>
 
         {/* 最近搜索记录 */}
-        <div className="mt-6 w-full max-w-xl">
+        <div className="pointer-events-auto mt-6 w-full max-w-xl">
           {history.length === 0 ? (
             <div className="glass-card py-6 text-center font-mono text-xs text-slate-500">
               暂无搜索记录 —— 在上方搜索一家 A 股公司，开始第一次透视
