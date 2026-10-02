@@ -29,3 +29,6 @@ next-env.d.ts
 # 离线预跑的 A 股财务数据（体积大且可再生成，不进 Git）
 /data/akshare/*.json
 .superpowers/
+
+# 项目打包文件，勿提交
+*.zip
