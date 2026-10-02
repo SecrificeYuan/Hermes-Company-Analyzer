@@ -75,22 +75,31 @@
 
 | 版式 | 触发 | C 位 | LITE 人话锚点 | 详读层第一 section |
 |---|---|---|---|---|
-| 资金告急 | hp score 最低 | 现金流图 + HP 强化 | 「公司快没钱了」 | 财务详情 |
-| 质押告急 | def score 最低，或质押比例 ≥ 60% 强制 | 股权图 + 质押大数字仪表 | 「老板把股票 almost 押光了」 | 股权与质押 |
-| 诉讼缠身 | atk score 最低，或近 12 月诉讼 ≥ 5 件强制 | 诉讼热力图放大 + 时间轴 | 「官司一大堆」 | 涉诉与执行 |
-| 舆情危机 | morale score 最低 | 舆情曲线放大 + 负面高亮 | 「骂声一片 / 人心散了」 | 舆情洞察 |
-| 稳健均衡 | 四维 score 全部 ≥ 60 | 五维雷达大图 | 「各项体征平稳」 | 默认顺序 |
+| 资金告急 | hp 危险度最高 | 现金流图 + HP 强化 | 「公司快没钱了」 | 财务详情 |
+| 质押告急 | def 危险度最高，或质押比例 ≥ 60% 强制 | 股权图 + 质押大数字仪表 | 「老板把股票 almost 押光了」 | 股权与质押 |
+| 诉讼缠身 | 涉诉危险度最高（atk.score 最高），或近 12 月诉讼 ≥ 5 件强制 | 诉讼热力图放大 + 时间轴 | 「官司一大堆」 | 涉诉与执行 |
+| 舆情危机 | morale 危险度最高 | 舆情曲线放大 + 负面高亮 | 「骂声一片 / 人心散了」 | 舆情洞察 |
+| 稳健均衡 | hp/def/morale ≥ 60 且 atk ≤ 40 | 五维雷达大图 | 「各项体征平稳」 | 默认顺序 |
 
 ### 4.2 判定逻辑
 
-`narrativeOf(xray)` 纯函数（`lib/narrative.ts`，v1 前端推导）：
+`narrativeOf(xray)` 纯函数（`lib/narrative.ts`，v1 前端推导）。**注意 ATK 语义反转**：`atk.score` 越高 = 涉诉战火越旺（风险值），与 hp/def/morale 的"越高越安全"相反。因此统一换算为"危险度"后再比较：
 
-1. 默认：`argmin(hp, def, atk, morale)`（score 越低越危险，沿用 `scoreColor` 阈值 <30 红 / <60 黄 / ≥60 绿）。
-2. 触发器覆盖：质押比例 ≥ 60% → 强制质押告急；近 12 月诉讼 ≥ 5 件 → 强制诉讼缠身。
-3. 四维全 ≥ 60 → 稳健均衡。
-4. 契约预留可选增量字段 `narrative?: 'debt'|'pledge'|'lawsuit'|'sentiment'|'balanced'`，未来由分析引擎接管（存在时优先于前端推导）。
+```
+dangerHp      = 100 - hp.score
+dangerDef     = 100 - def.score
+dangerAtk     = atk.score          // 已是危险度，不取反
+dangerMorale  = 100 - morale.score
+```
 
-**v1 判定输入仅为 `CompanyXRay` 现有字段**：质押比例取 `def.pledgeRatio`，诉讼计数取 `timeline` 近 12 月 legal 类事件数（不依赖 §6 明细扩展，保证第一期可落地）。
+判定顺序（前者命中即返回）：
+
+1. **契约优先**：`xray.narrative` 字段存在且合法 → 直接采用（信任分析引擎）。
+2. **触发器**：质押比例 ≥ 60% → 质押告急；近 12 月诉讼 ≥ 5 件 → 诉讼缠身。两触发器同时命中时质押优先（平仓风险时间尺度更短）。
+3. **健康线**：hp/def/morale.score 全部 ≥ 60 且 atk.score ≤ 40 → 稳健均衡。
+4. **危险度 argmax**：取四个 danger 值中最大者对应版式；平局按 质押 > 诉讼 > 资金 > 舆情 的固定优先级（排序稳定性保证）。
+
+**v1 判定输入仅为 `CompanyXRay` 现有字段**：质押比例取 `def.pledgeRatio`，诉讼计数取 `timeline` 近 12 月 legal 类事件数（不依赖 §6 明细扩展，保证第一期可落地）。三家 mock 公司的实际归属（已用分析引擎实测锁定）：danger → 质押告急（触发器）、warning → 资金告急（argmax）、healthy → 稳健均衡（健康线），自然覆盖三种不同判定路径。
 
 ### 4.3 传导规则
 
@@ -194,7 +203,7 @@ llm?: {
 
 - `narrativeOf()` + 版式配置 + 排序工具（vitest 覆盖：argmin / 触发器边界 60%、5 件 / 平局 / 健康线 60 边界 / 契约字段优先）
 - XrayClient 两层重排；MetaStrip / AnchorNav / NarrativeCard；七个 section 容器（含 AiSection 占位）
-- mock 扩展 `registry` + `narrative`；`RISK_COLOR` 硬编码清理
+- mock 扩展 `registry`；`narrative` 为类型层预留字段（analyze 不输出，仍由前端推导）；`RISK_COLOR` 硬编码清理
 - DOC-C FRONTEND 的"冻结布局基线"由本文档取代，同步更新
 
 **第二期 · 表格族与瀑布图**
