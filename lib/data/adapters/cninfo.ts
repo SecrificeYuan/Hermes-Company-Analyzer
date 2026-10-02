@@ -1,7 +1,7 @@
 import type { Announcement, RawCompanyData } from '@/lib/types'
 import type { DataAdapter } from '../adapter'
+import { getJson, sourceDate } from '../eastmoney'
 
-/** 公告标题关键词 → 类型分类 */
 function classify(title: string): Announcement['type'] {
   if (/减持/.test(title)) return '减持'
   if (/质押/.test(title)) return '质押'
@@ -11,21 +11,33 @@ function classify(title: string): Announcement['type'] {
   return '其他'
 }
 
-/**
- * 巨潮资讯公告适配器。
- * 通过 .env 中 CNINFO_ENABLED=true 启用；未启用时返回 null 触发降级。
- *
- * TODO(feat/data-engine)：接入巨潮公告查询接口
- *   POST http://www.cninfo.com.cn/new/hisAnnouncement/query
- *   按公司代码分页拉取，用 classify() 做标题分类，注意限流与 UA 伪装。
- */
-export const cninfoAdapter: DataAdapter = {
-  name: 'cninfo',
-  async fetch(_companyId): Promise<Partial<RawCompanyData> | null> {
+export const announcementAdapter: DataAdapter = {
+  name: 'eastmoney_announcements',
+  async fetch(companyId): Promise<Partial<RawCompanyData> | null> {
     try {
-      if (process.env.CNINFO_ENABLED !== 'true') return null
-      // TODO: 实现真实抓取，返回 { announcements: [...] }
-      return null
+      if (!/^\d{6}$/.test(companyId)) return null
+      const url = new URL('https://np-anotice-stock.eastmoney.com/api/security/ann')
+      url.search = new URLSearchParams({
+        sr: '-1', page_size: '100', page_index: '1', ann_type: 'A',
+        client_source: 'web', stock_list: companyId,
+      }).toString()
+      const json = await getJson(url) as { success?: number; data?: { list?: unknown[] } }
+      if (json.success !== 1 || !Array.isArray(json.data?.list)) return null
+      const announcements: Announcement[] = []
+      for (const item of json.data.list) {
+        const row = item as Record<string, unknown>
+        const codes = row.codes
+        if (!Array.isArray(codes) || !codes.some((code) => (code as Record<string, unknown>).stock_code === companyId)) continue
+        const date = sourceDate(row.notice_date)
+        const title = typeof row.title === 'string' ? row.title.trim() : ''
+        const artCode = typeof row.art_code === 'string' ? row.art_code : ''
+        if (!date || !title || !/^AN\d+$/.test(artCode)) continue
+        announcements.push({
+          date, title, type: classify(title),
+          url: `https://data.eastmoney.com/notices/detail/${companyId}/${artCode}.html`,
+        })
+      }
+      return announcements.length ? { announcements } : null
     } catch {
       return null
     }

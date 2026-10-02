@@ -1,50 +1,93 @@
 import type { RawCompanyData, SentimentItem } from '@/lib/types'
 import type { DataAdapter } from '../adapter'
+import { resolveCompany } from '../eastmoney'
 
-/** GDELT tone 原始值大致在 -20~+20，这里压到契约的 -10~+10 */
-function clampTone(t: number): number {
-  return Math.max(-10, Math.min(10, Math.round(t)))
+interface TonePoint { date?: unknown; value?: unknown }
+interface ToneSeries { data?: TonePoint[] }
+interface Article { seendate?: unknown; title?: unknown; domain?: unknown }
+
+function isoDate(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const match = /^(\d{4})(\d{2})(\d{2})/.exec(value.replace(/-/g, ''))
+  if (!match) return null
+  const date = `${match[1]}-${match[2]}-${match[3]}`
+  const parsed = new Date(`${date}T00:00:00Z`)
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date ? date : null
 }
 
-/**
- * GDELT 舆情适配器（真实免费 API，无需 key，建议作为首个真实数据源）。
- * 文档：https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/
- *
- * 通过 GDELT_ENABLED=true 启用；网络失败自动降级到 mock。
- *
- * TODO(feat/data-engine)：
- *   1. mode=ArtList 拿标题/来源/日期，tone 字段在 tonechart 模式或文章级接口提取；
- *   2. 中文公司名建议同时查询中英文关键词；
- *   3. 按月聚合成 sentiment[]（升序），每月一条 tone 均值 + 代表性标题。
- */
+function clampTone(value: number): number {
+  return Math.max(-10, Math.min(10, Math.round(value * 10) / 10))
+}
+
+/** Pair real timeline tone with a representative article from the same month. */
+export function aggregateGdelt(timeline: unknown, articleList: unknown): SentimentItem[] {
+  const series = (timeline as { timeline?: ToneSeries[] })?.timeline
+  const articles = (articleList as { articles?: Article[] })?.articles
+  if (!Array.isArray(series) || !Array.isArray(articles)) return []
+
+  const titles = new Map<string, { date: string; headline: string; source: string }>()
+  for (const article of articles) {
+    const date = isoDate(article?.seendate)
+    if (!date || typeof article.title !== 'string' || !article.title.trim()) continue
+    const month = date.slice(0, 7)
+    const previous = titles.get(month)
+    if (!previous || date > previous.date) {
+      titles.set(month, {
+        date,
+        headline: article.title.trim(),
+        source: typeof article.domain === 'string' && article.domain.trim() ? article.domain.trim() : 'GDELT',
+      })
+    }
+  }
+
+  const tones = new Map<string, { sum: number; count: number }>()
+  for (const item of series[0]?.data ?? []) {
+    const date = isoDate(item?.date)
+    const value = item?.value
+    if (!date || typeof value !== 'number' || !Number.isFinite(value)) continue
+    const month = date.slice(0, 7)
+    const previous = tones.get(month) ?? { sum: 0, count: 0 }
+    previous.sum += value
+    previous.count++
+    tones.set(month, previous)
+  }
+
+  return [...tones.entries()]
+    .filter(([month]) => titles.has(month))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, values]) => ({
+      ...titles.get(month)!,
+      tone: clampTone(values.sum / values.count),
+    }))
+}
+
+async function queryName(companyId: string): Promise<string | null> {
+  const company = await resolveCompany(companyId)
+  return company?.name ?? null
+}
+
+/** GDELT DOC 2.0: TimelineTone supplies measured tone; ArtList supplies titles. */
 export const gdeltAdapter: DataAdapter = {
   name: 'gdelt',
   async fetch(companyId): Promise<Partial<RawCompanyData> | null> {
     try {
-      if (process.env.GDELT_ENABLED !== 'true') return null
-
-      const url =
-        'https://api.gdeltproject.org/api/v2/doc/doc' +
-        `?query=${encodeURIComponent(companyId)}&mode=ArtList&maxrecords=50&format=json&timespan=12m`
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
-      if (!res.ok) return null
-      const json = (await res.json()) as {
-        articles?: { seendate?: string; title?: string; domain?: string; tone?: number }[]
+      if (process.env.GDELT_ENABLED === 'false') return null
+      const name = await queryName(companyId)
+      if (!name) return null
+      const endpoint = process.env.GDELT_API_URL ?? 'https://api.gdeltproject.org/api/v2/doc/doc'
+      const query = `"${name.replace(/["()]/g, ' ').trim()}"`
+      const buildUrl = (mode: string) => {
+        const url = new URL(endpoint)
+        url.search = new URLSearchParams({ query, mode, format: 'json', timespan: '12m', maxrecords: '250' }).toString()
+        return url
       }
-      const articles = json.articles ?? []
-      if (articles.length === 0) return null
-
-      const sentiment: SentimentItem[] = articles
-        .filter((a) => a.seendate && a.title)
-        .map((a) => ({
-          date: `${a.seendate!.slice(0, 4)}-${a.seendate!.slice(4, 6)}-${a.seendate!.slice(6, 8)}`,
-          tone: clampTone(typeof a.tone === 'number' ? a.tone : 0),
-          headline: a.title!,
-          source: a.domain ?? 'GDELT',
-        }))
-        .sort((a, b) => a.date.localeCompare(b.date))
-
-      return { sentiment }
+      const [toneResponse, articleResponse] = await Promise.all([
+        fetch(buildUrl('TimelineTone'), { signal: AbortSignal.timeout(8000) }),
+        fetch(buildUrl('ArtList'), { signal: AbortSignal.timeout(8000) }),
+      ])
+      if (!toneResponse.ok || !articleResponse.ok) return null
+      const sentiment = aggregateGdelt(await toneResponse.json(), await articleResponse.json())
+      return sentiment.length ? { sentiment } : null
     } catch {
       return null
     }

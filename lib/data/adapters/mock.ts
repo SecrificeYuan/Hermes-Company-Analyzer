@@ -20,8 +20,12 @@ export function isMockCompany(id: string): boolean {
 }
 
 export async function fetchMockCompany(id: string): Promise<RawCompanyData | null> {
-  const data = MOCK_REGISTRY[id]
-  if (!data) return null
-  // 深拷贝，防止下游 normalize 原地修改污染模块缓存
-  return JSON.parse(JSON.stringify(data))
+  try {
+    const data = Object.hasOwn(MOCK_REGISTRY, id) ? MOCK_REGISTRY[id] : null
+    if (!data) return null
+    // 深拷贝，防止下游 normalize 原地修改污染模块缓存
+    return JSON.parse(JSON.stringify(data))
+  } catch {
+    return null
+  }
 }

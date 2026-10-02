@@ -1,5 +1,9 @@
 # Hermes · 公司 X 光机
 
+> 数据采集现已提供实时原始数据接口 `GET /api/company/<六位 A 股代码或准确简称>/raw`。
+> 该接口只返回实际查到的 `RawCompanyData`，不使用 mock 或预跑快照；详见 [DOC-A](docs/DOC-A-DATA-ENGINE.md)。
+> 下方旧演示页面说明仍描述原始黑客松 UI；该 UI 尚未适配真实公司搜索。
+
 输入公司名，30 秒生成一张游戏化**公司 X 光片**——用角色卡的形式，把财务、司法、舆情、股权等散落线索，可视化为 HP / 护甲 / 攻击力 / 隐藏状态 / 风险时间轴。
 
 黑客松三人并行项目：Next.js 15 App Router + TypeScript + Tailwind + shadcn/ui + ECharts + Framer Motion + Zustand。数据层 mock 优先，架构上预留真实数据源接入点。
