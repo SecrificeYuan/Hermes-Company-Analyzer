@@ -18,7 +18,7 @@ export interface ChatResult {
   finishReason: string
 }
 
-interface ChatOptions {
+export interface ChatOptions {
   messages: ChatMessage[]
   tools?: ToolSpec[]
   maxTokens?: number
@@ -118,6 +118,7 @@ function parseChatResult(payload: unknown): ChatResult | null {
         arguments: safeParseArgs(tc.function?.arguments),
       }))
     : null
+  if ((msg.content ?? null) === null && toolCalls === null) return null
   return { content: msg.content ?? null, toolCalls, finishReason: choice?.finish_reason ?? 'stop' }
 }
 
@@ -132,44 +133,51 @@ function safeParseArgs(args: string | undefined): Record<string, unknown> {
 }
 
 export async function* chatStream(opts: ChatOptions): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done' }> {
-  const cfg = llmConfig()
-  if (!cfg) return
-  const { signal, clear } = buildUrlSignal(opts.signal)
+  let finished = false
   try {
-    const { url, init } = buildRequest(cfg, opts, true)
-    const res = await fetch(url, { ...init, signal })
-    if (!res.ok || !res.body) return
-    // Node 18+/浏览器均提供 getReader；jsdom 下 Response 来自 undici，也支持
-    const reader = (res.body as unknown as { getReader(): ReadableStreamDefaultReader<Uint8Array> }).getReader()
-    const decoder = new TextDecoder()
-    let buf = ''
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buf += decoder.decode(value, { stream: true })
-      const lines = buf.split('\n')
-      buf = lines.pop() ?? ''
-      for (const line of lines) {
-        const t = line.trim()
-        if (!t.startsWith('data:')) continue
-        const data = t.slice(5).trim()
-        if (data === '[DONE]') {
-          yield { type: 'done' }
-          return
+    const cfg = llmConfig()
+    if (!cfg) return
+    const { signal, clear } = buildUrlSignal(opts.signal)
+    try {
+      const { url, init } = buildRequest(cfg, opts, true)
+      const res = await fetch(url, { ...init, signal })
+      if (!res.ok || !res.body) return
+      // Node 18+/浏览器均提供 getReader；jsdom 下 Response 来自 undici，也支持
+      const reader = (res.body as unknown as { getReader(): ReadableStreamDefaultReader<Uint8Array> }).getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          const t = line.trim()
+          if (!t.startsWith('data:')) continue
+          const data = t.slice(5).trim()
+          if (data === '[DONE]') {
+            finished = true
+            yield { type: 'done' }
+            return
+          }
+          let parsed: unknown
+          try {
+            parsed = JSON.parse(data)
+          } catch {
+            continue // 单行解析失败跳过
+          }
+          const delta = (parsed as { choices?: { delta?: { content?: string } }[] })?.choices?.[0]?.delta?.content
+          if (delta) yield { type: 'delta', text: delta }
         }
-        let parsed: unknown
-        try {
-          parsed = JSON.parse(data)
-        } catch {
-          continue // 单行解析失败跳过
-        }
-        const delta = (parsed as { choices?: { delta?: { content?: string } }[] })?.choices?.[0]?.delta?.content
-        if (delta) yield { type: 'delta', text: delta }
       }
+    } finally {
+      clear()
     }
   } catch {
     // 任何失败静默结束
   } finally {
-    clear()
+    // 除 [DONE] 分支外，所有退出路径统一补一个 done
+    if (!finished) yield { type: 'done' }
   }
 }

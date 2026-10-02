@@ -72,6 +72,15 @@ describe('lib/llm/client', () => {
     expect(result?.toolCalls).toEqual([{ id: 'call_1', name: 'search_company', arguments: { name: '茅台' } }])
   })
 
+  it('message 为 {content:null, tool_calls:null} 时 chatOnce 返回 null', async () => {
+    const payload = { choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: null, tool_calls: null } }] }
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(payload))
+    vi.stubGlobal('fetch', fetchMock)
+    const { chatOnce } = await importClient({ LLM_BASE_URL: BASE, LLM_API_KEY: KEY, LLM_MODEL: 'm' })
+    expect(await chatOnce({ messages: [{ role: 'user', content: 'hi' }] })).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('非法 JSON 响应重试 1 次后返回 null', async () => {
     const bad = new Response('not-json{', { status: 200 })
     const fetchMock = vi.fn().mockResolvedValueOnce(bad).mockResolvedValueOnce(bad)
@@ -106,5 +115,17 @@ describe('lib/llm/client', () => {
       if (ev.type === 'delta') parts.push(ev.text)
     }
     expect(parts.join('')).toBe('你好')
+  })
+
+  it('chatStream 遇 HTTP 500 恰产出一个 done、零个 delta', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({}, 500))
+    vi.stubGlobal('fetch', fetchMock)
+    const { chatStream } = await importClient({ LLM_BASE_URL: BASE, LLM_API_KEY: KEY, LLM_MODEL: 'm' })
+    const events: { type: string; text?: string }[] = []
+    for await (const ev of chatStream({ messages: [{ role: 'user', content: 'hi' }] })) {
+      events.push(ev)
+    }
+    expect(events).toEqual([{ type: 'done' }])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })
