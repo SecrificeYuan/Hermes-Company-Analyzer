@@ -133,6 +133,8 @@ export interface LlmSummary {
   sectionNotes?: Partial<Record<NarrativeKey, string>> // 各维度解读 → LITE 叙事卡文案源
   generatedAt: string // ISO 时间
   model: string // 模型标识
+  /** 灯理由的 LLM 覆写（可选）：存在时 LightBanner 优先于模板 reason */
+  lightReason?: string
 }
 
 export interface RawCompanyData {
@@ -163,6 +165,15 @@ export interface RawCompanyData {
 // ============================================================
 
 export type RiskLevel = 'green' | 'yellow' | 'red'
+
+/** 灯（LITE 首屏唯一结论，v1.1 增量可选字段） */
+export interface LightVerdict {
+  color: RiskLevel
+  headline: string          // 固定三句：先别付这钱 / 能付，但换个付法 / 这钱能付
+  reason: string            // 一句人话；llm.lightReason 存在时优先
+  saferAdvice?: string      // 仅黄灯：怎么付更安全
+  limitedSignals?: boolean  // 非上市"基于公开信号"诚实角标
+}
 export type Severity = 'low' | 'mid' | 'high'
 
 export interface DimensionScore {
@@ -176,6 +187,10 @@ export interface HiddenStatus {
   severity: Severity
   description: string // 人话解释
   evidence: { source: string; date: string; detail: string; url?: string }[]
+  /** 层数刻度（v1.1 增量）：如质押 30/60/80 → { current: 2, max: 3 } */
+  tier?: { current: number; max: number }
+  /** 致命 debuff（v1.1 增量）：命中即红灯（无牌照/未备案招商等品类弹药） */
+  fatal?: boolean
 }
 
 export interface TimelineEvent {
@@ -243,6 +258,8 @@ export interface CompanyXRay {
   narrative?: NarrativeType
   /** LLM 解读（可选），占位期由 mock 提供示例 */
   llm?: LlmSummary
+  /** 灯（v1.1 增量可选）：缺席时渲染层按 overallRisk 映射兜底 */
+  light?: LightVerdict
   /** 分析基准时，锚定 meta.fetchedAt，保证演示可复现 */
   asOf: string
 
