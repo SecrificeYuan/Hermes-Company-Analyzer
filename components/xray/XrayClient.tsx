@@ -15,6 +15,8 @@ import { RiskTimeline } from './RiskTimeline'
 import { SentimentCurve } from './SentimentCurve'
 import { VerdictBanner } from './VerdictBanner'
 import { ShareCard } from '@/components/share/ShareCard'
+import { useMode } from '@/lib/theme/use-tokens'
+import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
 
 const section = {
@@ -27,6 +29,9 @@ const section = {
  * 所有模块只消费 CompanyXRay。
  */
 export function XrayClient({ xray }: { xray: CompanyXRay }) {
+  const mode = useMode()
+  const titles = getTerms(mode).cardTitles
+
   return (
     <main className="mx-auto min-h-screen max-w-7xl px-6 py-8">
       {/* 导航 */}
@@ -56,25 +61,25 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
         <div className="grid gap-6 lg:col-span-2 lg:grid-cols-2">
           <motion.div variants={section} custom={2} initial="hidden" animate="show">
             <Card className="h-full">
-              <CardHeader><CardTitle>五维属性雷达</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{titles.radar}</CardTitle></CardHeader>
               <CardContent><AttributeRadar xray={xray} /></CardContent>
             </Card>
           </motion.div>
           <motion.div variants={section} custom={3} initial="hidden" animate="show">
             <Card className="h-full">
-              <CardHeader><CardTitle>经营现金流趋势</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{titles.cashflow}</CardTitle></CardHeader>
               <CardContent><CashFlowChart hp={xray.hp} /></CardContent>
             </Card>
           </motion.div>
           <motion.div variants={section} custom={4} initial="hidden" animate="show">
             <Card className="h-full">
-              <CardHeader><CardTitle>诉讼热力图</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{titles.lawsuit}</CardTitle></CardHeader>
               <CardContent><LawsuitHeatmap timeline={xray.timeline} /></CardContent>
             </Card>
           </motion.div>
           <motion.div variants={section} custom={5} initial="hidden" animate="show">
             <Card className="h-full">
-              <CardHeader><CardTitle>舆情情绪曲线</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{titles.sentiment}</CardTitle></CardHeader>
               <CardContent><SentimentCurve morale={xray.morale} /></CardContent>
             </Card>
           </motion.div>
@@ -84,7 +89,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
       {/* 风险时间轴 */}
       <motion.div variants={section} custom={6} initial="hidden" animate="show" className="mt-6">
         <Card>
-          <CardHeader><CardTitle>风险时间轴 · 近 12 个月</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{titles.timeline}</CardTitle></CardHeader>
           <CardContent><RiskTimeline timeline={xray.timeline} /></CardContent>
         </Card>
       </motion.div>
@@ -92,7 +97,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
       {/* 关系图谱 */}
       <motion.div variants={section} custom={7} initial="hidden" animate="show" className="mt-6">
         <Card>
-          <CardHeader><CardTitle>关系图谱</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{titles.graph}</CardTitle></CardHeader>
           <CardContent><RelationGraph graph={xray.graph} /></CardContent>
         </Card>
       </motion.div>
