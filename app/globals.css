@@ -108,11 +108,17 @@ body {
 }
 
 .glass-card-hover {
-  transition: border-color 0.25s ease;
+  transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .glass-card-hover:hover {
   border-color: var(--accent);
+}
+
+/* 首页：hover 时玻璃卡整体过渡到实底，避免透出跑马灯 */
+main[data-theme='home'] .glass-card-hover:hover {
+  background-color: var(--card-solid);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 /* ===== 文字辉光 ===== */
