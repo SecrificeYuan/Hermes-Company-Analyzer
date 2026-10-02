@@ -7,30 +7,37 @@ import { formatWan } from '@/lib/utils'
 import { useTokens } from '@/lib/theme/use-tokens'
 import type { CompanyXRay } from '@/lib/types'
 
-/** 股权与质押：质押大数字 + 十大股东表 + 人事事件表 + 减持/质押类公告 */
-export function EquitySection({ xray }: { xray: CompanyXRay }) {
+/** 质押大数字摘要：速览层 equity 图位使用（详读层见 EquitySection） */
+export function PledgeSummary({ xray }: { xray: CompanyXRay }) {
   const t = useTokens()
   const p = xray.def.pledgeRatio
   const color = p >= 60 ? t.riskColor.red : p >= 40 ? t.riskColor.yellow : t.riskColor.green
   const status = p >= 60 ? '已爆预警线' : p >= 40 ? '逼近预警线' : '未质押警戒'
+  return (
+    <div className="flex items-center gap-8">
+      <div>
+        <div className="flex items-baseline gap-2">
+          <StatNumber value={p} className="text-5xl font-extrabold" duration={1.2} />
+          <span className="text-2xl font-bold" style={{ color }}>%</span>
+        </div>
+        <div className="mt-1 font-mono text-[11px] text-slate-500">股权质押比例 · {status}</div>
+      </div>
+      <div className="font-mono text-xs leading-relaxed text-slate-400">
+        实控人质押占总股本 {xray.def.pledgeRatio}%<br />
+        资产覆盖率 {xray.def.assetCoverage}
+      </div>
+    </div>
+  )
+}
+
+/** 股权与质押：质押大数字 + 十大股东表 + 人事事件表 + 减持/质押类公告 */
+export function EquitySection({ xray }: { xray: CompanyXRay }) {
   const shareholders = xray.detail?.shareholders ?? []
   const people = xray.detail?.people ?? []
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-8">
-        <div>
-          <div className="flex items-baseline gap-2">
-            <StatNumber value={p} className="text-5xl font-extrabold" duration={1.2} />
-            <span className="text-2xl font-bold" style={{ color }}>%</span>
-          </div>
-          <div className="mt-1 font-mono text-[11px] text-slate-500">股权质押比例 · {status}</div>
-        </div>
-        <div className="font-mono text-xs leading-relaxed text-slate-400">
-          实控人质押占总股本 {xray.def.pledgeRatio}%<br />
-          资产覆盖率 {xray.def.assetCoverage}
-        </div>
-      </div>
+      <PledgeSummary xray={xray} />
 
       <div>
         <h4 className="mb-2 font-mono text-[11px] tracking-widest text-slate-500">十大股东</h4>

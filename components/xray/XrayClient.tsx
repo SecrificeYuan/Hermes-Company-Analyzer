@@ -20,7 +20,7 @@ import { MetaStrip } from './MetaStrip'
 import { MarketZone } from './market/MarketZone'
 import { SectionShell } from './detail/SectionShell'
 import { FinancialSection } from './detail/FinancialSection'
-import { EquitySection } from './detail/EquitySection'
+import { EquitySection, PledgeSummary } from './detail/EquitySection'
 import { LegalSection } from './detail/LegalSection'
 import { SentimentSection } from './detail/SentimentSection'
 import { NetworkSection } from './detail/NetworkSection'
@@ -69,7 +69,7 @@ export function XrayClient({ xray }: { xray: CompanyXRay }) {
 
   const proCharts: Record<GlanceSlot, ReactNode> = {
     finance: <CashFlowChart hp={xray.hp} height={280} />,
-    equity: <EquitySection xray={xray} />,
+    equity: <PledgeSummary xray={xray} />,
     legal: <LawsuitHeatmap timeline={xray.timeline} height={280} />,
     sentiment: <SentimentCurve morale={xray.morale} height={280} />,
     network: <RelationGraph graph={xray.graph} height={280} />,
