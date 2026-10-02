@@ -67,7 +67,7 @@ export default function HomePage() {
               onClick={() => setQueryMode('filter')}
               className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${queryMode === 'filter' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
             >
-              条件筛选
+              筛选
             </button>
           </div>
           {queryMode === 'search' && (
@@ -82,7 +82,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="pointer-events-auto mb-10 flex w-full justify-center"
+            className="mb-10 flex w-full justify-center"
           >
             <FilterPanel />
           </motion.div>
