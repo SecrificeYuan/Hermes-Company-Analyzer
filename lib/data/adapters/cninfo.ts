@@ -2,10 +2,14 @@ import type { Announcement, RawCompanyData } from '@/lib/types'
 import type { DataAdapter } from '../adapter'
 import { getJson, sourceDate } from '../eastmoney'
 
-function classify(title: string): Announcement['type'] {
+/**
+ * 仅把指向司法程序的明确措辞标为“诉讼”。
+ * “执行情况”“执行报告”等经营披露中的“执行”不代表被执行或诉讼。
+ */
+export function classifyAnnouncement(title: string): Announcement['type'] {
   if (/减持/.test(title)) return '减持'
   if (/质押/.test(title)) return '质押'
-  if (/诉讼|仲裁|执行/.test(title)) return '诉讼'
+  if (/诉讼|仲裁|被执行|强制执行|执行裁定|执行通知|执行申请/.test(title)) return '诉讼'
   if (/问询|关注函|监管函/.test(title)) return '问询'
   if (/年度报告|年报|半年度报告/.test(title)) return '年报'
   return '其他'
@@ -33,7 +37,7 @@ export const announcementAdapter: DataAdapter = {
         const artCode = typeof row.art_code === 'string' ? row.art_code : ''
         if (!date || !title || !/^AN\d+$/.test(artCode)) continue
         announcements.push({
-          date, title, type: classify(title),
+          date, title, type: classifyAnnouncement(title),
           url: `https://data.eastmoney.com/notices/detail/${companyId}/${artCode}.html`,
         })
       }

@@ -20,7 +20,7 @@ const RISK_META = {
   red: { label: '高风险 · RED', Icon: ShieldAlert, badge: 'danger' as const },
 }
 
-function DimRow({ label, score, sub }: { label: string; score: number; sub: string }) {
+function DimRow({ label, score, sub, unavailable = false }: { label: string; score: number; sub: string; unavailable?: boolean }) {
   const t = useTokens()
   const color = scoreColor(t, score)
   return (
@@ -30,6 +30,7 @@ function DimRow({ label, score, sub }: { label: string; score: number; sub: stri
         <span style={{ color }}>{sub}</span>
       </div>
       <div className="h-1.5 overflow-hidden rounded bg-ink-bg/80">
+        {unavailable ? <div className="h-full border border-dashed border-edge" /> : (
         <motion.div
           className="h-full rounded"
           style={{ background: color, boxShadow: `0 0 8px ${color}66` }}
@@ -37,6 +38,7 @@ function DimRow({ label, score, sub }: { label: string; score: number; sub: stri
           animate={{ width: `${score}%` }}
           transition={{ duration: 1, ease: 'easeOut', delay: 0.4 }}
         />
+        )}
       </div>
     </div>
   )
@@ -86,9 +88,15 @@ export function CharacterCard({ xray }: { xray: CompanyXRay }) {
         <DimRow
           label={terms.atkLabel}
           score={xray.atk.score}
-          sub={`${xray.atk.label} · 诉讼 ${xray.atk.lawsuitCount} 起 / 被执行 ${formatWan(xray.atk.executionAmount)}`}
+          sub={xray.atk.available === false ? '司法数据暂未接入' : `${xray.atk.label} · 诉讼 ${xray.atk.lawsuitCount} 起 / 被执行 ${formatWan(xray.atk.executionAmount)}`}
+          unavailable={xray.atk.available === false}
         />
-        <DimRow label={terms.moraleLabel} score={xray.morale.score} sub={`${xray.morale.label} · tone ${xray.morale.avgTone}`} />
+        <DimRow
+          label={terms.moraleLabel}
+          score={xray.morale.score}
+          sub={xray.morale.available === false ? '东方财富新闻加载中' : `${xray.morale.label} · tone ${xray.morale.avgTone}`}
+          unavailable={xray.morale.available === false}
+        />
       </div>
 
       <div className="mt-auto">

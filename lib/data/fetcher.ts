@@ -2,15 +2,16 @@ import type { DataSourceStatus, RawCompanyData } from '@/lib/types'
 import type { DataAdapter } from './adapter'
 import { financialAdapter } from './adapters/financial'
 import { announcementAdapter } from './adapters/cninfo'
-import { gdeltAdapter } from './adapters/gdelt'
 import { pledgeAdapter } from './adapters/pledge'
 import { holdersAdapter } from './adapters/holders'
+import { profileAdapter } from './adapters/profile'
 import { resolveCompany } from './eastmoney'
 import { cacheGet, cacheSet } from './cache'
 
-const ADAPTERS: DataAdapter[] = [financialAdapter, announcementAdapter, pledgeAdapter, holdersAdapter, gdeltAdapter]
+// 舆情走独立的客户端异步接口。不能让新闻源的限流或慢响应阻塞报告主体。
+const ADAPTERS: DataAdapter[] = [financialAdapter, profileAdapter, announcementAdapter, pledgeAdapter, holdersAdapter]
 
-/** 单适配器总时限：慢源（如 GDELT 退避重试）最多占用这么久，超时不拖住整页 */
+/** 单个主体数据源的总时限，超时不拖住报告首屏。 */
 const ADAPTER_DEADLINE_MS = 6000
 
 function withDeadline<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -73,11 +74,12 @@ export async function fetchRawCompany(input: string): Promise<RawCompanyData> {
   for (const [index, result] of settled.entries()) {
     const name = ADAPTERS[index].name
     const data = result.status === 'fulfilled' ? result.value.data : null
-    const ok = Boolean(data && (data.financial || data.announcements || data.legal || data.sentiment || data.people || data.shareholders))
+    const ok = Boolean(data && (data.meta?.registry || data.financial || data.announcements || data.legal || data.sentiment || data.people || data.shareholders))
     statuses.push({ name, ok, fallback: false, latencyMs: result.status === 'fulfilled' ? result.value.latencyMs : 0 })
     if (!ok || !data) continue
     hasData = true
     if (data.meta?.industry) merged.meta.industry = data.meta.industry
+    if (data.meta?.registry) merged.meta.registry = data.meta.registry
     if (data.financial) merged.financial = data.financial
     if (data.announcements) merged.announcements = data.announcements
     if (data.legal) merged.legal = data.legal

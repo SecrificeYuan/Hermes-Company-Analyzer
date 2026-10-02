@@ -29,8 +29,8 @@ function dimDangers(x: CompanyXRay): Record<Exclude<NarrativeType, 'balanced'>, 
   return {
     debt: 100 - x.hp.score,
     pledge: 100 - x.def.score,
-    lawsuit: x.atk.score,
-    sentiment: Math.max(0, -x.morale.avgTone * 10),
+    lawsuit: x.atk.available === false ? 0 : x.atk.score,
+    sentiment: x.morale.available === false ? 0 : Math.max(0, -x.morale.avgTone * 10),
   }
 }
 
@@ -46,12 +46,14 @@ export function narrativeOf(x: CompanyXRay): NarrativeResult {
   const legalEvents = x.timeline.filter((e) => e.category === 'legal').length
   // 触发器优先：数据异常比分数更抓人；双命中时质押优先（平仓风险时间尺度更短）
   if (x.def.pledgeRatio >= PLEDGE_TRIGGER) return { type: 'pledge', via: 'trigger-pledge' }
-  if (legalEvents >= LAWSUIT_TRIGGER) return { type: 'lawsuit', via: 'trigger-lawsuit' }
+  if (x.atk.available !== false && legalEvents >= LAWSUIT_TRIGGER) return { type: 'lawsuit', via: 'trigger-lawsuit' }
   // 健康线
   if (
     x.hp.score >= HEALTHY_MIN &&
     x.def.score >= HEALTHY_MIN &&
+    x.morale.available !== false &&
     x.morale.score >= HEALTHY_MIN &&
+    x.atk.available !== false &&
     x.atk.score <= ATK_HEALTHY_MAX
   ) {
     return { type: 'balanced', via: 'healthy' }
