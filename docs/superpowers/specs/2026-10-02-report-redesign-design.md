@@ -89,7 +89,8 @@
 dangerHp      = 100 - hp.score
 dangerDef     = 100 - def.score
 dangerAtk     = atk.score          // 已是危险度，不取反
-dangerMorale  = 100 - morale.score
+dangerSentiment = max(0, -avgTone × 10)  // 按负面 tone 强度；morale.score 是 avgTone 线性映射，
+                                       // 用 100-score 会把微负舆情放大成最大叙事（与锁定归属矛盾）
 ```
 
 判定顺序（前者命中即返回）：
