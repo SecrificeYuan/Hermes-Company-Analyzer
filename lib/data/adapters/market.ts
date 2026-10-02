@@ -128,25 +128,63 @@ export async function fetchTencentKline(code: string): Promise<KlineBar[]> {
 
 export interface FundFlowDay {
   date: string
+  main: number // 主力（超大单+大单）净流入（万元）
   superLarge: number // 超大单净流入（万元）
   large: number // 大单
   medium: number // 中单
   small: number // 小单
+  /** 数据源；缺省为东财。新浪为降级源，口径与东财不同，UI 会标注 */
+  source?: 'eastmoney' | 'sina'
 }
 
-/** 东财资金流日 K：f52..f56 = 主力/小单/中单/大单/超大单 净流入（元），转换为万元。 */
-export async function fetchEastmoneyFundFlow(secid: string): Promise<FundFlowDay[]> {
+/** 新浪历史成交分布（MoneyFlow.ssl_qsfx_lscjfb）：r0..r3 = 散户/中户/大户/超大户 净流入（元）。
+ *  仅作东财被限流时的降级源——两家的分档口径不同，同一交易日数值不可直接对比。
+ */
+async function fetchSinaFundFlow(secid: string): Promise<FundFlowDay[]> {
+  const daima = secid.startsWith('1.') ? `sh${secid.slice(2)}` : `sz${secid.slice(2)}`
   const url =
-    `https://push2.eastmoney.com/api/qt/stock/fflow/daykline/get?secid=${secid}` +
-    `&fields1=f1,f2,f3,f7&fields2=f51,f52,f53,f54,f55,f56&klt=101`
-  const res = await fetch(url, { next: { revalidate: 300 } })
-  if (!res.ok) return []
-  const json = await res.json()
-  const klines: string[] = json?.data?.klines ?? []
-  return klines.map((s) => {
-    const [date, main, small, medium, large, superLarge] = s.split(',')
-    void main
+    'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/MoneyFlow.ssl_qsfx_lscjfb' +
+    `?page=1&num=1&sort=opendate&asc=0&daima=${daima}`
+  try {
+    const res = await fetch(url, { next: { revalidate: 300 } })
+    if (!res.ok) return []
+    const rows = (await res.json()) as Array<{ opendate: string; r0_net: string; r1_net: string; r2_net: string; r3_net: string }>
+    const row = rows?.[0]
+    if (!row) return []
     const wan = (v: string) => parseFloat(v) / 10000
-    return { date, superLarge: wan(superLarge), large: wan(large), medium: wan(medium), small: wan(small) }
-  })
+    const small = wan(row.r0_net)
+    const medium = wan(row.r1_net)
+    const large = wan(row.r2_net)
+    const superLarge = wan(row.r3_net)
+    return [{ date: row.opendate, main: large + superLarge, superLarge, large, medium, small, source: 'sina' }]
+  } catch {
+    return []
+  }
+}
+
+/** 东财资金流日 K：f52..f56 = 主力/小单/中单/大单/超大单 净流入（元），转换为万元。
+ *  push2 主机对本网络间歇性重置连接（表现为 fetch 抛错），失败时降级 push2his（与 K 线同主机），
+ *  仍失败再降级新浪历史成交分布。
+ */
+export async function fetchEastmoneyFundFlow(secid: string): Promise<FundFlowDay[]> {
+  const path =
+    `/api/qt/stock/fflow/daykline/get?secid=${secid}` +
+    `&fields1=f1,f2,f3,f7&fields2=f51,f52,f53,f54,f55,f56&klt=101`
+  for (const host of ['https://push2.eastmoney.com', 'https://push2his.eastmoney.com']) {
+    try {
+      const res = await fetch(`${host}${path}`, { next: { revalidate: 300 } })
+      if (!res.ok) continue
+      const json = await res.json()
+      const klines: string[] = json?.data?.klines ?? []
+      if (klines.length === 0) continue
+      return klines.map((s) => {
+        const [date, main, small, medium, large, superLarge] = s.split(',')
+        const wan = (v: string) => parseFloat(v) / 10000
+        return { date, main: wan(main), superLarge: wan(superLarge), large: wan(large), medium: wan(medium), small: wan(small) }
+      })
+    } catch {
+      // 换下一主机/降级源重试
+    }
+  }
+  return fetchSinaFundFlow(secid)
 }

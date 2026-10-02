@@ -155,3 +155,13 @@ body {
     transform: translateX(-25%);
   }
 }
+
+/* 快讯跑马灯：两份复制，位移 50% 才无缝 */
+@keyframes ticker-scroll-2 {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}

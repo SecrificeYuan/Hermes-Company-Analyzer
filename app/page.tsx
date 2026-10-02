@@ -3,20 +3,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Coins, History, Megaphone, Network, Scale } from 'lucide-react'
+import { History } from 'lucide-react'
 import { NetworkBg } from '@/components/home/NetworkBg'
+import { FlashMarquee } from '@/components/home/FlashMarquee'
 import { SearchBox } from '@/components/home/SearchBox'
 import { ScanBeam } from '@/components/scan/ScanBeam'
 import { ScanProgress } from '@/components/scan/ScanProgress'
 import { addSearchHistory, getSearchHistory, type SearchRecord } from '@/lib/search-history'
 import type { ListedCompany } from '@/lib/data/eastmoney'
-
-const CAPABILITIES = [
-  { icon: Coins, label: '财务', note: '现金流与负债' },
-  { icon: Scale, label: '司法', note: '涉诉与执行' },
-  { icon: Megaphone, label: '舆情', note: '情绪与声量' },
-  { icon: Network, label: '股权', note: '关联与控制' },
-] as const
 
 export default function HomePage() {
   const router = useRouter()
@@ -36,7 +30,7 @@ export default function HomePage() {
   }
 
   return (
-    <main data-theme="home" className="relative flex min-h-screen flex-col overflow-hidden">
+    <main data-theme="home" className="relative flex h-[calc(100vh-2.25rem)] flex-col overflow-hidden">
       <NetworkBg />
 
       {/* 顶栏 */}
@@ -95,24 +89,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 底部能力带 */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="relative z-10 grid grid-cols-4 border-t border-ink-edge bg-[#070B14]/60"
-      >
-        {CAPABILITIES.map((cap) => (
-          <div
-            key={cap.label}
-            className="flex flex-col items-center gap-0.5 border-r border-ink-edge px-2 py-5 last:border-r-0"
-          >
-            <cap.icon className="mb-1 h-5 w-5 text-neon/80" />
-            <div className="text-[13px] font-semibold text-slate-100">{cap.label}</div>
-            <div className="text-xs text-slate-500">{cap.note}</div>
-          </div>
-        ))}
-      </motion.div>
+      {/* 底部快讯跑马灯（替代原能力带） */}
+      <FlashMarquee />
 
       {/* footer */}
       <div className="relative z-10 border-t border-ink-edge py-3 text-center font-mono text-[11px] text-slate-600">

@@ -21,9 +21,9 @@ export function FundFlowDonut({ days, height = 220 }: { days: FundFlowDay[]; hei
   if (days.length === 0) return <ChartEmpty height={height} text="资金流数据暂缺" />
 
   const latest = days[days.length - 1]
-  const net = CATS.reduce((s, c) => s + latest[c.key], 0)
-  const inflow = CATS.reduce((s, c) => s + Math.max(latest[c.key], 0), 0)
-  const outflow = CATS.reduce((s, c) => s + Math.max(-latest[c.key], 0), 0)
+  // 头条口径用主力净流入（超大单+大单）；四档求和在该数据源下恒为 0，没有信息量
+  const net = latest.main
+  const retail = latest.medium + latest.small
 
   const option: EChartsOption = {
     ...baseChartOptionFor(t),
@@ -55,7 +55,7 @@ export function FundFlowDonut({ days, height = 220 }: { days: FundFlowDay[]; hei
           <span className={`font-mono text-sm font-bold ${net >= 0 ? 'text-safe' : 'text-danger'}`}>
             {net >= 0 ? '+' : ''}{formatWan(net)}
           </span>
-          <span className="font-mono text-[10px] text-slate-500">净流入</span>
+          <span className="font-mono text-[10px] text-slate-500">主力净流入</span>
         </div>
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
@@ -68,9 +68,9 @@ export function FundFlowDonut({ days, height = 220 }: { days: FundFlowDay[]; hei
           </div>
         ))}
         <div className="!mt-3 flex justify-between border-t border-edge pt-2 font-mono text-[10px] text-slate-500">
-          <span>流入 {formatWan(inflow)}</span>
-          <span>流出 {formatWan(outflow)}</span>
-          <span>{latest.date}</span>
+          <span className={net >= 0 ? 'text-safe' : 'text-danger'}>主力 {net >= 0 ? '+' : ''}{formatWan(net)}</span>
+          <span className={retail >= 0 ? 'text-safe' : 'text-danger'}>散户 {retail >= 0 ? '+' : ''}{formatWan(retail)}</span>
+          <span>{latest.date}{latest.source === 'sina' ? ' · 新浪' : ''}</span>
         </div>
       </div>
     </div>
