@@ -2,11 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { getTerms, LITE_BANNED_TERMS } from '@/lib/theme/terms'
 
 describe('术语字典', () => {
-  it('LITE 游戏化术语', () => {
+  it('LITE 人话术语', () => {
     const lite = getTerms('lite')
-    expect(lite.healthLabel).toBe('HP · 财务血量')
-    expect(lite.hiddenTitle).toBe('HIDDEN STATUS')
-    expect(lite.riskScoreCaption).toBe('RISK SCORE')
+    expect(lite.healthLabel).toBe('钱袋子')
+    expect(lite.defLabel).toBe('护盾 · 质押')
+    expect(lite.atkLabel).toBe('麻烦 · 官司')
+    expect(lite.moraleLabel).toBe('口碑')
+    expect(lite.hiddenTitle).toBe('隐藏状态')
+    expect(lite.riskScoreCaption).toBe('风险分')
+    expect(lite.radarSeriesName).toBe('五维体征')
+    expect(lite.cardTitles.radar).toBe('五维体征')
+    expect(lite.sections).toMatchObject({ financial: '钱袋子', equity: '护盾', legal: '麻烦', sentiment: '口碑', network: '关系网' })
   })
 
   it('PRO 金融术语', () => {
@@ -22,15 +28,13 @@ describe('术语字典', () => {
 
   it('LITE 对比页术语', () => {
     const c = getTerms('lite').compare
-    expect(c.title).toBe('双公司对战')
-    expect(c.action).toBe('开战')
-    expect(c.actionLoading).toBe('分析中…')
-    expect(c.winnerTemplate).toBe('{name} 胜 · 更健康')
-    expect(c.drawLabel).toBe('势均力敌')
-    expect(c.slotLabel).toBe('PLAYER {slot}')
-    expect(c.cardTitles.table).toBe('关键指标对比')
-    expect(c.cardTitles.trend).toBe('趋势对决')
-    expect(c.cardTitles.risk).toBe('风险状态对决')
+    expect(c.title).toBe('两家公司比比看')
+    expect(c.action).toBe('开始对比')
+    expect(c.winnerTemplate).toBe('这钱付给 {name} 更稳')
+    expect(c.drawLabel).toBe('两家差不多')
+    expect(c.slotLabel).toBe('公司 {slot}')
+    expect(c.verdictQuoteTitle).toBe('两边各一句')
+    expect(c.idleHint).toBe('选两家公司，看看钱付给谁更稳')
   })
 
   it('PRO 对比页术语', () => {
