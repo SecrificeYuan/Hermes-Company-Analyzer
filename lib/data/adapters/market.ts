@@ -71,6 +71,37 @@ export async function fetchTencentQuote(code: string): Promise<QuoteSnapshot | n
   }
 }
 
+/** 全球指数跑马灯数据源（腾讯 qt.gtimg.cn 批量快照，GBK；A股/北交所/港股/美股代码混用） */
+export const GLOBAL_INDEX_CODES = [
+  'sh000001', 'sz399001', 'sz399006', 'sh000688', 'bj899050',
+  'hkHSI', 'usDJI', 'usIXIC', 'usINX',
+] as const
+
+export interface IndexQuote {
+  name: string
+  price: number
+  changePct: number // %
+}
+
+export async function fetchGlobalIndices(): Promise<IndexQuote[]> {
+  const res = await fetch(`https://qt.gtimg.cn/q=${GLOBAL_INDEX_CODES.join(',')}`, {
+    headers: { Referer: 'https://gu.qq.com/' },
+    signal: AbortSignal.timeout(10000),
+    next: { revalidate: 30 },
+  })
+  if (!res.ok) return []
+  const text = new TextDecoder('gbk').decode(await res.arrayBuffer())
+  const out: IndexQuote[] = []
+  for (const m of text.matchAll(/="([^"]*)"/g)) {
+    const f = m[1].split('~')
+    const price = parseFloat(f[3])
+    const prev = parseFloat(f[4])
+    if (!f[1] || !Number.isFinite(price) || !Number.isFinite(prev) || prev === 0) continue
+    out.push({ name: f[1], price, changePct: ((price - prev) / prev) * 100 })
+  }
+  return out
+}
+
 export interface KlineBar {
   date: string
   open: number

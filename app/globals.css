@@ -145,3 +145,13 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 229, 255, 0.4);
 }
+
+/* ===== 全球指数跑马灯 ===== */
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-25%);
+  }
+}

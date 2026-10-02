@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { ThemeSync } from '@/components/theme/ThemeSync'
 import { SiteChrome } from '@/components/theme/SiteChrome'
+import { MarketTicker } from '@/components/market/MarketTicker'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="zh-CN" className="dark">
       <body className="bg-grid min-h-screen">
         <ThemeSync />
+        <MarketTicker />
         <SiteChrome />
         {children}
       </body>
