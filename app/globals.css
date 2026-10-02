@@ -2,44 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+[data-theme='lite'] {
   color-scheme: dark;
+  --bg: #070b14;
+  --card: rgba(18, 26, 43, 0.72);
+  --card-solid: #121a2b;
+  --edge: rgba(0, 229, 255, 0.12);
+  --accent: #00e5ff;
+  --danger: #ff3b5c;
+  --warn: #ffb020;
+  --safe: #00e58a;
+  --grape: #8b5cf6;
+  --text-main: #e2e8f0;
+  --text-dim: #7c8db0;
+  --grid-line: rgba(124, 141, 176, 0.14);
+  --grid-glow: rgba(0, 229, 255, 0.1);
+  --grid-cell: rgba(0, 229, 255, 0.045);
+}
+
+[data-theme='pro'] {
+  --bg: #0b0f1a;
+  --card: #101625;
+  --card-solid: #101625;
+  --edge: #1e2a42;
+  --accent: #4c8dff;
+  --danger: #ff5c6c;
+  --warn: #ffb020;
+  --safe: #3ecf8e;
+  --grape: #8b5cf6;
+  --text-main: #f4f6fa;
+  --text-dim: #8b94ab;
+  --grid-line: rgba(139, 148, 171, 0.14);
+  --grid-glow: transparent;
+  --grid-cell: rgba(139, 148, 171, 0.05);
 }
 
 body {
-  @apply bg-ink-bg text-slate-200 font-sans antialiased;
+  @apply font-sans antialiased;
+  background-color: var(--bg);
+  color: var(--text-main);
 }
 
-/* ===== 深空网格背景（首页/报告页共用） ===== */
+/* ===== 网格背景（LITE 科幻 / PRO 收敛） ===== */
 .bg-grid {
   background-image:
-    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(0, 229, 255, 0.1), transparent),
-    linear-gradient(rgba(0, 229, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 229, 255, 0.045) 1px, transparent 1px);
+    radial-gradient(ellipse 90% 55% at 50% -10%, var(--grid-glow), transparent),
+    linear-gradient(var(--grid-cell) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-cell) 1px, transparent 1px);
   background-size:
     100% 100%,
     48px 48px,
     48px 48px;
 }
 
-/* ===== 玻璃拟态卡片 ===== */
+/* ===== 卡片：LITE 玻璃拟态 / PRO 实底描边 ===== */
 .glass-card {
-  @apply rounded-card border backdrop-blur-xl;
-  background: rgba(18, 26, 43, 0.72);
-  border-color: rgba(0, 229, 255, 0.12);
+  @apply rounded-card border;
+  background: var(--card);
+  border-color: var(--edge);
+}
+
+[data-theme='lite'] .glass-card {
+  @apply backdrop-blur-xl;
 }
 
 .glass-card-hover {
-  transition:
-    transform 0.25s ease,
-    border-color 0.25s ease,
-    box-shadow 0.25s ease;
+  transition: border-color 0.25s ease;
 }
 
 .glass-card-hover:hover {
-  transform: translateY(-3px);
-  border-color: rgba(0, 229, 255, 0.45);
-  box-shadow: 0 0 24px rgba(0, 229, 255, 0.18);
+  border-color: var(--accent);
 }
 
 /* ===== 文字辉光 ===== */
