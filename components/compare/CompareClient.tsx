@@ -8,10 +8,11 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Quote, RotateCcw, Swords } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import { CharacterCard } from '@/components/xray/CharacterCard'
 import { EvidenceDrawer } from '@/components/xray/EvidenceDrawer'
 import { CompareSelector } from './CompareSelector'
+import { BattleLoading } from './BattleLoading'
+import { ProLoading } from './ProLoading'
 import { CompareVerdictBar } from './CompareVerdictBar'
 import { DualRadar } from './DualRadar'
 import { LlmPlaceholder } from './LlmPlaceholder'
@@ -20,6 +21,7 @@ import { RiskCompare } from './RiskCompare'
 import { TrendCompare } from './TrendCompare'
 import { compareVerdict } from '@/lib/analysis/compare-verdict'
 import type { CompareSelection } from '@/lib/compare-params'
+import type { ListedCompany } from '@/lib/data/eastmoney'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
@@ -43,27 +45,12 @@ async function fetchPair(pick: Record<Slot, string>): Promise<Pair> {
   return { A: a, B: b }
 }
 
-function LoadingSkeleton() {
-  return (
-    <div className="mt-6 space-y-6">
-      <Skeleton className="h-20 w-full rounded-card" />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Skeleton className="h-72 rounded-card" />
-        <Skeleton className="h-72 rounded-card" />
-      </div>
-    </div>
-  )
-}
-
 export function CompareClient({ initialPick }: { initialPick: CompareSelection | null }) {
   const router = useRouter()
   const mode = useMode()
   const terms = getTerms(mode).compare
 
-  const [pick, setPick] = useState<Record<Slot, string>>({
-    A: initialPick?.a ?? 'mock-healthy',
-    B: initialPick?.b ?? 'mock-danger',
-  })
+  const [pick, setPick] = useState<Record<Slot, ListedCompany | null>>({ A: null, B: null })
   const [result, setResult] = useState<Pair | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -82,20 +69,36 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
   }, [])
 
   useEffect(() => {
-    if (initialPick) void run({ A: initialPick.a, B: initialPick.b })
+    if (!initialPick) return
+    void run({ A: initialPick.a, B: initialPick.b })
+    // URL 带参自动开战；同时回填公司名供选择器展示
+    void Promise.all(
+      (['A', 'B'] as Slot[]).map(async (slot) => {
+        const code = slot === 'A' ? initialPick.a : initialPick.b
+        try {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(code)}`)
+          const data = (await res.json()) as { found: boolean; company?: ListedCompany }
+          if (data.found && data.company) setPick((p) => ({ ...p, [slot]: data.company! }))
+        } catch {
+          /* 名称回填失败不影响对战结果 */
+        }
+      }),
+    )
     // 仅挂载时执行一次：URL 带参自动开战
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const sameCompany = pick.A === pick.B
+  const sameCompany = pick.A !== null && pick.A.id === pick.B?.id
 
   const handleRun = () => {
-    router.replace(`/compare?a=${pick.A}&b=${pick.B}`)
-    void run(pick)
+    if (!pick.A || !pick.B) return
+    router.replace(`/compare?a=${pick.A.id}&b=${pick.B.id}`)
+    void run({ A: pick.A.id, B: pick.B.id })
   }
 
   const handleCopy = async () => {
-    const url = `${window.location.origin}/compare?a=${pick.A}&b=${pick.B}`
+    if (!pick.A || !pick.B) return
+    const url = `${window.location.origin}/compare?a=${pick.A.id}&b=${pick.B.id}`
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
@@ -119,7 +122,7 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
 
       <CompareSelector
         value={pick}
-        onChange={(slot, id) => setPick((p) => ({ ...p, [slot]: id }))}
+        onChange={(slot, company) => setPick((p) => ({ ...p, [slot]: company }))}
         onRun={handleRun}
         loading={loading}
         sameCompany={sameCompany}
@@ -133,13 +136,19 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
       {error && (
         <div className="mt-6 flex items-center justify-center gap-3 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 font-mono text-xs text-danger">
           <span>{error}</span>
-          <Button variant="ghost" size="sm" onClick={() => void run(pick)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (pick.A && pick.B) void run({ A: pick.A.id, B: pick.B.id })
+            }}
+          >
             <RotateCcw /> {terms.retry}
           </Button>
         </div>
       )}
 
-      {loading && <LoadingSkeleton />}
+      {loading && (mode === 'pro' ? <ProLoading /> : <BattleLoading />)}
 
       {!loading && !error && result && (mode === 'pro'
         ? <ProFlow a={result.A} b={result.B} />

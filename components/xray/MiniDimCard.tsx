@@ -18,6 +18,18 @@ export function MiniDimCard({ id, k, xray }: { id: string; k: NarrativeKey; xray
   const t = useTokens()
   const terms = getTerms('lite')
   if (k === 'network') return null
+  const unavailable = (k === 'morale' && xray.morale.available === false) || (k === 'atk' && xray.atk.available === false)
+  if (unavailable) {
+    return (
+      <section id={id} className="glass-card scroll-mt-24 p-4">
+        <div className="mb-1.5 flex items-baseline justify-between font-mono text-[11px]">
+          <span className="tracking-wider text-slate-400">{terms.dimensionTitles[k]}</span>
+          <span className="text-slate-500">{k === 'atk' ? '司法数据暂未接入' : '东方财富新闻加载中'}</span>
+        </div>
+        <div className="h-1.5 border border-dashed border-edge" />
+      </section>
+    )
+  }
   const dim = DIMS[k]
   const score = dim.score(xray)
   const color = scoreColor(t, score)

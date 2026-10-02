@@ -10,9 +10,20 @@ const SEV_LABEL = ['low', 'mid', 'high'] as const
 const SEV_NAME: Record<(typeof SEV_LABEL)[number], string> = { low: '轻微', mid: '中等', high: '重大' }
 
 /** 诉讼热力图：近 12 个月 × 严重等级，数据取自时间轴的 legal 类事件 */
-export function LawsuitHeatmap({ timeline, height = 220 }: { timeline: CompanyXRay['timeline']; height?: number }) {
+export function LawsuitHeatmap({
+  timeline,
+  available = true,
+  height = 220,
+}: {
+  timeline: CompanyXRay['timeline']
+  /** 未接入司法切片时，不能以空热力图暗示“没有涉诉记录”。 */
+  available?: boolean
+  height?: number
+}) {
   const t = useTokens()
   const mode = useMode()
+
+  if (!available) return <ChartEmpty height={height} text="司法数据暂不可用，无法判断近 12 个月涉诉情况" />
 
   const legal = timeline.filter((t) => t.category === 'legal')
   if (legal.length === 0) return <ChartEmpty height={height} text="近 12 个月无涉诉记录" />

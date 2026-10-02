@@ -23,9 +23,26 @@ export function SearchBox({ onPick }: { onPick: (company: CompanyIdentity) => vo
     return () => document.removeEventListener('pointerdown', closeOutside)
   }, [])
 
-  const pick = (company: CompanyIdentity) => {
-    abortRef.current?.abort()
-    if (timerRef.current) clearTimeout(timerRef.current)
+  // 下拉定位：portal 到 body，跟随输入框（fixed 坐标）
+  useEffect(() => {
+    if (!open) return
+    const update = () => {
+      const rect = wrapRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setMenuPos({ top: rect.bottom + 8, left: rect.left, width: rect.width })
+    }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [open])
+
+  const pick = (company: ListedCompany) => {
+    onPick(company)
+    setQuery('')
     setOpen(false)
     setQuery('')
     setItems([])
@@ -69,9 +86,9 @@ export function SearchBox({ onPick }: { onPick: (company: CompanyIdentity) => vo
     void run(query.trim(), true)
   }
   return (
-    <div ref={containerRef} className="relative w-full max-w-xl">
-      <div className="glass-card flex items-center gap-3 px-4 py-3">
-        <Search className="h-5 w-5 shrink-0 text-neon" />
+    <div ref={wrapRef} className="relative w-full max-w-xl">
+      <div className="glass-card flex items-center gap-3 px-5 py-4">
+        <Search className="h-5 w-5 text-neon" />
         <input
           aria-label="搜索公司" role="combobox" aria-expanded={open} aria-controls="company-options"
           aria-autocomplete="list" aria-activedescendant={active >= 0 ? `company-option-${active}` : undefined}

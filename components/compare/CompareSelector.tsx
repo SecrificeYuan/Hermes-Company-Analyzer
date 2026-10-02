@@ -1,9 +1,10 @@
 // components/compare/CompareSelector.tsx
 'use client'
 
-import { Check, GitCompareArrows, Link2, Swords } from 'lucide-react'
+import { Check, GitCompareArrows, Link2, Swords, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PRESET_COMPANIES } from '@/lib/presets'
+import { CompanySearchInput } from '@/components/search/CompanySearchInput'
+import type { ListedCompany } from '@/lib/data/eastmoney'
 import { useMode } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 
@@ -19,8 +20,8 @@ export function CompareSelector({
   copied,
   onCopy,
 }: {
-  value: Record<Slot, string>
-  onChange: (slot: Slot, id: string) => void
+  value: Record<Slot, ListedCompany | null>
+  onChange: (slot: Slot, company: ListedCompany | null) => void
   onRun: () => void
   loading: boolean
   sameCompany: boolean
@@ -30,25 +31,40 @@ export function CompareSelector({
 }) {
   const mode = useMode()
   const terms = getTerms(mode).compare
+  const bothPicked = value.A !== null && value.B !== null
 
   return (
     <div className="glass-card flex flex-wrap items-end justify-center gap-4 p-6">
-      {(['A', 'B'] as Slot[]).map((slot) => (
-        <label key={slot} className="flex flex-col gap-1.5 font-mono text-xs text-slate-400">
-          {terms.slotLabel.replace('{slot}', slot)}
-          <select
-            value={value[slot]}
-            disabled={loading}
-            onChange={(e) => onChange(slot, e.target.value)}
-            className="rounded-btn border border-neon/30 bg-ink-card px-3 py-2 text-sm text-slate-100 focus:outline-none disabled:opacity-50"
-          >
-            {PRESET_COMPANIES.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </label>
-      ))}
-      <Button onClick={onRun} disabled={loading || sameCompany} size="lg">
+      {(['A', 'B'] as Slot[]).map((slot) => {
+        const picked = value[slot]
+        return (
+          <label key={slot} className="flex flex-col gap-1.5 font-mono text-xs text-slate-400">
+            {terms.slotLabel.replace('{slot}', slot)}
+            {picked ? (
+              <div className="flex items-center gap-3 rounded-btn border border-neon/30 bg-ink-card px-3 py-2">
+                <span className="text-sm font-semibold text-slate-100">{picked.name}</span>
+                <span className="font-mono text-xs text-slate-500">{picked.stockCode}</span>
+                <button
+                  type="button"
+                  aria-label={`重选公司 ${slot}`}
+                  disabled={loading}
+                  onClick={() => onChange(slot, null)}
+                  className="text-slate-500 transition-colors hover:text-slate-200 disabled:opacity-50"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <CompanySearchInput
+                placeholder="搜公司名称或代码…"
+                disabled={loading}
+                onPick={(company) => onChange(slot, company)}
+              />
+            )}
+          </label>
+        )
+      })}
+      <Button onClick={onRun} disabled={loading || sameCompany || !bothPicked} size="lg">
         {mode === 'pro' ? <GitCompareArrows /> : <Swords />}
         {loading ? terms.actionLoading : terms.action}
       </Button>

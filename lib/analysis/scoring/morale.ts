@@ -1,4 +1,4 @@
-import type { CompanyXRay, RawCompanyData, SentimentItem } from '@/lib/types'
+import type { CompanyXRay, RawCompanyData } from '@/lib/types'
 
 const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v))
 
@@ -14,7 +14,9 @@ export function scoreMorale(
 ): CompanyXRay['morale'] {
   const items = sentiment ?? []
   if (items.length === 0) {
-    return { score: 50, label: '数据不足', avgTone: 0, trend: [] }
+    // 50 和 0 都会被误读为中性结论；舆情未取回时只保留占位值以维持
+    // 既有数值契约，并让 UI 通过 available=false 显示“暂无法判断”。
+    return { score: 50, label: '暂无法判断', avgTone: 0, trend: [], available: false }
   }
 
   const recent = items.filter((s) => asOf.getTime() - new Date(s.date).getTime() <= 90 * DAY_MS)
@@ -37,5 +39,5 @@ export function scoreMorale(
 
   const label = score >= 70 ? '士气高涨' : score >= 50 ? '军心稳定' : score >= 30 ? '流言四起' : '人心惶惶'
 
-  return { score, label, avgTone, trend, labels }
+  return { score, label, avgTone, trend, labels, available: true }
 }

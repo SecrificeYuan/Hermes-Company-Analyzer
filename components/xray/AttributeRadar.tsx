@@ -16,7 +16,12 @@ export function AttributeRadar({ xray, height = 250 }: { xray: CompanyXRay; heig
   const option: EChartsOption = {
     ...baseChartOptionFor(t),
     radar: {
-      indicator: terms.radarIndicators.map((name) => ({ name, max: 100 })),
+      indicator: terms.radarIndicators.map((name, index) => ({
+        name: index === 2 && xray.atk.available === false
+          ? `${name}（暂无法判断）`
+          : index === 3 && xray.morale.available === false ? `${name}（待加载）` : name,
+        max: 100,
+      })),
       radius: '68%',
       axisName: { color: t.colors.textDim, fontSize: 11 },
       splitLine: { lineStyle: { color: t.colors.gridLine } },
@@ -28,7 +33,7 @@ export function AttributeRadar({ xray, height = 250 }: { xray: CompanyXRay; heig
         type: 'radar',
         data: [
           {
-            value: [xray.hp.score, xray.def.score, xray.atk.score, xray.morale.score, 100 - xray.riskScore],
+            value: [xray.hp.score, xray.def.score, xray.atk.available === false ? '-' : xray.atk.score, xray.morale.available === false ? '-' : xray.morale.score, 100 - xray.riskScore],
             name: terms.radarSeriesName,
             areaStyle: { color: `${t.colors.accent}38` },
             lineStyle: { color: t.colors.accent, width: 2 },

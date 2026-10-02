@@ -26,7 +26,7 @@ export function AnnouncementList({ items, max = 8 }: { items: Announcement[]; ma
             <span className="shrink-0 rounded border border-edge px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
               {a.type}
             </span>
-            <span className="min-w-0 flex-1 truncate text-slate-300">{a.title}</span>
+            <span className="min-w-0 flex-1 truncate text-neon hover:underline">{a.title}</span>
           </a>
         </li>
       ))}

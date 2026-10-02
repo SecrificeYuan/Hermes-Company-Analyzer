@@ -69,6 +69,35 @@ export interface SentimentItem {
   tone: number // -10 ~ +10
   headline: string
   source: string
+  /** 东方财富新闻的原始报道入口；缺省表示历史数据源未提供链接。 */
+  url?: string
+}
+
+/**
+ * 舆情是独立慢数据源：报告主体不等待它。available 才能用于舆情结论；
+ * unavailable 表示查询完成但没有可验证的报道，failed 表示上游或网络异常。
+ */
+export type SentimentFetchStatus = 'available' | 'unavailable' | 'failed'
+export type SentimentHistoryStatus = 'recent' | 'backfilling' | 'complete' | 'partial' | 'limited'
+
+export interface SentimentSnapshot {
+  companyId: string
+  status: SentimentFetchStatus
+  source: '东方财富新闻'
+  fetchedAt: string
+  items: SentimentItem[]
+  /** 仅在 status=available 时存在，避免用 0 或 50 伪装未知。 */
+  morale?: CompanyXRay['morale']
+  coverage?: { from: string; to: string }
+  /** 当前响应对应的东方财富搜索页。 */
+  page?: number
+  hasMore?: boolean
+  totalHits?: number
+  /** 年度历史由浏览器渐进回补，状态不会影响已呈现的新闻。 */
+  historyStatus?: SentimentHistoryStatus
+  loadedPages?: number
+  /** 面向界面的诚实错误说明，不包含上游内部错误详情。 */
+  message?: string
 }
 
 export interface PersonEvent {
@@ -91,6 +120,11 @@ export interface RegistryInfo {
   creditCode: string // 统一社会信用代码
   foundedAt: string // 成立日期 YYYY-MM-DD
   registeredCapital: number // 注册资本，万元
+  /** 东方财富 F10 披露的公司简介，可能随上市公司更新。 */
+  profile?: string
+  mainBusiness?: string
+  /** 原始 F10 公司概况页，供用户回查。 */
+  sourceUrl?: string
 }
 
 /** LLM 解读（v1.1 预留可选）：数据归引擎，解读归 AI */
@@ -177,8 +211,19 @@ export interface CompanyXRay {
 
   hp: DimensionScore & { cashFlow: number; debtRatio: number; trend: number[]; labels?: string[] } // trend = 各年经营现金流（万元）升序；labels = 对应年份（v1.1 增量，可选）
   def: DimensionScore & { pledgeRatio: number; assetCoverage: number }
-  atk: DimensionScore & { lawsuitCount: number; executionAmount: number }
-  morale: DimensionScore & { avgTone: number; trend: number[]; labels?: string[] } // trend = 近 12 个月舆情 tone 均值（-10~10）升序；labels = 对应月份 YYYY-MM（v1.1 增量，可选）
+  atk: DimensionScore & {
+    lawsuitCount: number
+    executionAmount: number
+    /** false 表示司法切片尚未取得；UI 不得将占位分数或 0 条记录解释为真实结论。 */
+    available?: boolean
+  }
+  morale: DimensionScore & {
+    avgTone: number
+    trend: number[]
+    labels?: string[]
+    /** false 时舆情尚未独立取回，UI 不得把 score/avgTone 解释为真实结论。 */
+    available?: boolean
+  } // trend = 近 12 个月舆情 tone 均值（-10~10）升序；labels = 对应月份 YYYY-MM（v1.1 增量，可选）
 
   hiddenStatus: HiddenStatus[]
 

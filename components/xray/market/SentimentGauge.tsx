@@ -4,14 +4,28 @@ import type { EChartsOption } from 'echarts'
 import { ChartEmpty, EChart } from '../EChart'
 import { baseChartOptionFor } from '@/lib/theme/echarts-themes'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
+import { SentimentWordCloud } from './SentimentWordCloud'
 import type { CompanyXRay } from '@/lib/types'
 
 /** 舆情仪表盘：tone 均值映射 -10..10 → 负向/中性/正向弧形仪表 + 利好利空占比 */
-export function SentimentGauge({ xray, height = 150 }: { xray: CompanyXRay; height?: number }) {
+export function SentimentGauge({
+  xray,
+  height = 150,
+  loading = false,
+  slow = false,
+  message,
+}: {
+  xray: CompanyXRay
+  height?: number
+  loading?: boolean
+  slow?: boolean
+  message?: string
+}) {
   const t = useTokens()
   const mode = useMode()
   const items = xray.detail?.sentimentItems ?? []
-  if (items.length === 0) return <ChartEmpty height={height} text="舆情数据暂缺" />
+  if (loading) return <ChartEmpty height={height} text={slow ? '东方财富新闻加载中' : '正在加载舆情'} />
+  if (xray.morale.available === false || items.length === 0) return <ChartEmpty height={height} text={message ?? '舆情暂无法判断'} />
 
   const pos = items.filter((i) => i.tone > 0).length
   const neg = items.filter((i) => i.tone < 0).length
@@ -39,24 +53,27 @@ export function SentimentGauge({ xray, height = 150 }: { xray: CompanyXRay; heig
   }
 
   return (
-    <div>
-      <div className="relative" style={{ height }}>
-        <EChart option={option} height={height} theme={mode} />
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-end pb-1">
-          <span className="text-xs text-slate-400">近 12 月舆情偏向</span>
-          <span className="font-mono text-lg font-bold" style={{ color: leanColor }}>{lean}</span>
+    <div className="relative isolate overflow-hidden rounded-btn">
+      <SentimentWordCloud items={items} />
+      <div className="relative z-10">
+        <div className="relative" style={{ height }}>
+          <EChart option={option} height={height} theme={mode} />
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-end pb-1">
+            <span className="text-xs text-slate-400">近 12 月舆情偏向</span>
+            <span className="font-mono text-lg font-bold" style={{ color: leanColor }}>{lean}</span>
+          </div>
         </div>
-      </div>
-      <div className="mt-2">
-        <div className="mb-1 flex justify-between font-mono text-[10px] text-slate-500">
-          <span className="text-safe">利好 {pct(pos)}%</span>
-          <span>中性 {pct(mid)}%</span>
-          <span className="text-danger">利空 {pct(neg)}%</span>
-        </div>
-        <div className="flex h-1.5 overflow-hidden rounded-full">
-          <div className="bg-safe/70" style={{ width: `${pct(pos)}%` }} />
-          <div className="bg-slate-600/60" style={{ width: `${pct(mid)}%` }} />
-          <div className="bg-danger/70" style={{ width: `${pct(neg)}%` }} />
+        <div className="mt-2">
+          <div className="mb-1 flex justify-between font-mono text-[10px] text-slate-500">
+            <span className="text-safe">利好 {pct(pos)}%</span>
+            <span>中性 {pct(mid)}%</span>
+            <span className="text-danger">利空 {pct(neg)}%</span>
+          </div>
+          <div className="flex h-1.5 overflow-hidden rounded-full">
+            <div className="bg-safe/70" style={{ width: `${pct(pos)}%` }} />
+            <div className="bg-slate-600/60" style={{ width: `${pct(mid)}%` }} />
+            <div className="bg-danger/70" style={{ width: `${pct(neg)}%` }} />
+          </div>
         </div>
       </div>
     </div>

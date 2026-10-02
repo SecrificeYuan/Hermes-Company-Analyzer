@@ -145,3 +145,23 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 229, 255, 0.4);
 }
+
+/* ===== 全球指数跑马灯 ===== */
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-25%);
+  }
+}
+
+/* 快讯跑马灯：两份复制，位移 50% 才无缝 */
+@keyframes ticker-scroll-2 {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}

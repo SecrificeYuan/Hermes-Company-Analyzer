@@ -51,7 +51,8 @@ export async function suggestCompanies(input: string, limit = 6): Promise<Listed
   if (!query || query.length > 40 || /[()"'\\]/.test(query)) return []
   try {
     const url = new URL(SEARCH_URL)
-    url.search = new URLSearchParams({ input: query, type: '14', token: SEARCH_TOKEN }).toString()
+    // count 不传时接口只回 1 条候选；多要一些再过滤板块等非 A 股条目
+    url.search = new URLSearchParams({ input: query, type: '14', token: SEARCH_TOKEN, count: String(limit * 3) }).toString()
     const json = await getJson(url) as { QuotationCodeTable?: { Data?: unknown[] } }
     const matches = json.QuotationCodeTable?.Data
     if (!Array.isArray(matches)) return []
