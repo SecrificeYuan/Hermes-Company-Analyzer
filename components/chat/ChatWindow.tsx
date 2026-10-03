@@ -161,6 +161,7 @@ export function ChatWindow({
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buf = ''
+      let sawCard = false
 
       const appendToAi = (delta: string) => {
         aiText += delta
@@ -184,12 +185,12 @@ export function ChatWindow({
         if (idx < 0) return
         setMsgs((prev) => {
           if (idx >= prev.length || prev[idx].role !== 'assistant') {
-            if (mode === 'fallback') return [...prev, { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }]
+            if (mode === 'fallback' && !sawCard) return [...prev, { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }]
             return prev
           }
           const next = [...prev]
           if (next[idx].role === 'assistant' && next[idx].text === '') {
-            if (mode === 'remove') next.splice(idx, 1)
+            if (mode === 'remove' || sawCard) next.splice(idx, 1)
             else next[idx] = { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }
           }
           return next
@@ -217,19 +218,25 @@ export function ChatWindow({
             finishAi('remove')
             setMsgs((prev) => [...prev, { role: 'tool', label: ev.label ?? ev.name ?? '检索工具', name: ev.name }])
           } else if (ev.type === 'tool_end') {
-            // 标记最近一条未完成的工具行：停动画、变静态
+            // 标记最近一条未完成的工具行：停动画、变静态；并在末尾补「正在输出」占位气泡
+            // （X 光出片到首个 delta 之间模型在组织语言，不能让用户对着空白等）
             setMsgs((prev) => {
-              for (let i = prev.length - 1; i >= 0; i--) {
-                const item = prev[i]
+              const next = [...prev]
+              for (let i = next.length - 1; i >= 0; i--) {
+                const item = next[i]
                 if (item.role === 'tool' && !item.done) {
-                  const next = [...prev]
                   next[i] = { ...item, done: true }
-                  return next
+                  break
                 }
               }
-              return prev
+              if (pendingAiRef.current < 0) {
+                pendingAiRef.current = next.length
+                next.push({ role: 'assistant', text: '' })
+              }
+              return next
             })
           } else if (ev.type === 'report_card' && ev.reportCard) {
+            sawCard = true
             setMsgs((prev) => [...prev, { role: 'card', card: ev.reportCard as ReportCardData }])
           } else if (ev.type === 'error') {
             appendToAi(ev.message ?? '出错了')
