@@ -307,7 +307,7 @@ export function ChatWindow({
               return (
                 <div key={i} className="flex justify-start">
                   <span className="inline-flex items-center gap-2 rounded-full border border-ink-edge/60 bg-ink-card/40 px-3.5 py-1.5">
-                    <Icon className="h-3.5 w-3.5 animate-spin text-neon [animation-duration:2s]" />
+                    <Icon className="h-3.5 w-3.5 animate-pulse text-neon" />
                     <span className="font-mono text-[11px] tracking-wide text-slate-400">{m.label}</span>
                   </span>
                 </div>
