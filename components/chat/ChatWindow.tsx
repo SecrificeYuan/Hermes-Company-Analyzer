@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Copy, Pencil, Send, Trash2 } from 'lucide-react'
 import { addChatThread, type ChatMessage, type ChatThread } from '@/lib/chat-history'
 import { ReportCard, type ReportCardData } from '@/components/chat/ReportCard'
+import { Markdown } from '@/components/chat/Markdown'
 
 type UiMsg =
   | { role: 'user'; text: string }
@@ -262,8 +263,10 @@ export function ChatWindow({
           ) : m.role === 'assistant' ? (
             <div key={i} className="group flex justify-start">
               <div className="max-w-[85%]">
-                <div className="glass-card whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed text-slate-100">
-                  {m.text || (
+                <div className="glass-card max-w-[85%] px-4 py-2.5">
+                  {m.text ? (
+                    <Markdown text={m.text} />
+                  ) : (
                     <span className="inline-flex items-center gap-1.5 py-1 text-slate-400" aria-label="正在思考">
                       <span className="thinking-dot" />
                       <span className="thinking-dot" />
