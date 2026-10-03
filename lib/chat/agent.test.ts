@@ -68,8 +68,43 @@ describe('lib/chat/agent', () => {
     expect(text).toContain('资料不足')
   })
 
-  it('chatOnce 返回 null（网络故障）：回退模板话术，不调 chatStream', async () => {
-    vi.mocked(chatOnce).mockResolvedValue(null)
+  it('模型伪造 <tool_call> 文本：纠正回灌后重跑，伪调用不外流', async () => {
+    vi.mocked(chatOnce)
+      .mockResolvedValueOnce({
+        content: '<tool_call>get_risk_factor\n<arg_key>company_id</arg_key>\n<arg_value>603986</arg_value>\n</tool_call>',
+        toolCalls: null,
+        finishReason: 'stop',
+      })
+      .mockResolvedValueOnce({ content: null, toolCalls: null, finishReason: 'stop' })
+    vi.mocked(chatStream).mockImplementation(async function* () {
+      yield { type: 'delta', text: '兆易创新的结论如下。' }; yield { type: 'done' }
+    })
+    const events: { type: string; text?: string }[] = []
+    const text = await runAgent(USER, (e) => events.push(e))
+    expect(text).not.toContain('<tool_call')
+    expect(text).toContain('兆易创新')
+    expect(events.filter((e) => e.type === 'delta').map((e) => e.text).join('')).not.toContain('<tool_call')
+    // 纠正提示已回灌给第二轮
+    const secondMessages = JSON.stringify(vi.mocked(chatOnce).mock.calls[1][0].messages)
+    expect(secondMessages).toContain('get_risk_factor')
+    expect(secondMessages).toContain('不要在正文里输出')
+  })
+
+  it('流式正文混入 <tool_call> 块：增量剥除，只发干净文本', async () => {
+    vi.mocked(chatOnce).mockResolvedValueOnce({ content: null, toolCalls: null, finishReason: 'stop' })
+    vi.mocked(chatStream).mockImplementation(async function* () {
+      yield { type: 'delta', text: '好的。' }
+      yield { type: 'delta', text: '<tool_call>get_risk_factor</tool_call>' }
+      yield { type: 'delta', text: '结论是稳定的。' }
+      yield { type: 'done' }
+    })
+    const events: { type: string; text?: string }[] = []
+    const text = await runAgent(USER, (e) => events.push(e))
+    expect(text).toBe('好的。结论是稳定的。')
+    expect(events.filter((e) => e.type === 'delta').map((e) => e.text).join('')).toBe('好的。结论是稳定的。')
+  })
+
+  it('chatOnce 返回 null（网络故障）：回退模板话术，不调 chatStream', async () => {    vi.mocked(chatOnce).mockResolvedValue(null)
     const text = await runAgent(USER, () => {})
     expect(text.length).toBeGreaterThan(0)
     expect(chatStream).not.toHaveBeenCalled()
