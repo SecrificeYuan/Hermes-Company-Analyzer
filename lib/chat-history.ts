@@ -1,6 +1,9 @@
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'tool'
+  /** tool=工具进度行（content=label）；card=报告卡（content=卡片 JSON 字符串）——均不落 LLM，仅本地留痕 */
+  role: 'user' | 'assistant' | 'tool' | 'card'
   content: string | null
+  /** tool 行的工具名，供前端图标映射 */
+  name?: string
 }
 
 export interface ChatThread {
@@ -65,7 +68,7 @@ function removeFromServer(id: string): void {
 function isMessage(value: unknown): value is ChatMessage {
   if (typeof value !== 'object' || value === null) return false
   const m = value as Record<string, unknown>
-  return (m.role === 'user' || m.role === 'assistant' || m.role === 'tool') &&
+  return (m.role === 'user' || m.role === 'assistant' || m.role === 'tool' || m.role === 'card') &&
     (typeof m.content === 'string' || m.content === null)
 }
 

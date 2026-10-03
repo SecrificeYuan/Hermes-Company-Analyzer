@@ -38,8 +38,19 @@ export function ChatWindow({
 }) {
   const [msgs, setMsgs] = useState<UiMsg[]>(() =>
     thread.messages
-      .filter((m) => m.role !== 'tool')
-      .map((m): UiMsg => ({ role: m.role as 'user' | 'assistant', text: m.content ?? '' }))
+      .map((m): UiMsg | null => {
+        if (m.role === 'user' || m.role === 'assistant') return { role: m.role, text: m.content ?? '' }
+        if (m.role === 'tool') return { role: 'tool', label: m.content ?? '检索工具', name: m.name, done: true }
+        if (m.role === 'card' && m.content) {
+          try {
+            return { role: 'card', card: JSON.parse(m.content) as ReportCardData }
+          } catch {
+            return null
+          }
+        }
+        return null
+      })
+      .filter((m): m is UiMsg => m !== null)
   )
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -58,11 +69,15 @@ export function ChatWindow({
     if (el) el.scrollTo({ top: el.scrollHeight })
   }, [msgs])
 
-  /** 把剩余 UI 消息写回 thread 持久化（tool/card 行不落库） */
+  /** 把剩余 UI 消息写回 thread 持久化（tool=label、card=JSON，均留痕但不送 LLM） */
   const persistMsgs = (remaining: UiMsg[]) => {
-    const messages: ChatMessage[] = remaining
-      .filter((m): m is Extract<UiMsg, { role: 'user' }> | Extract<UiMsg, { role: 'assistant' }> => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({ role: m.role, content: m.text || null }))
+    const messages: ChatMessage[] = remaining.map((m) =>
+      m.role === 'user' || m.role === 'assistant'
+        ? { role: m.role, content: m.text || null }
+        : m.role === 'tool'
+          ? { role: 'tool', content: m.label, name: m.name }
+          : { role: 'card', content: JSON.stringify(m.card) },
+    )
     const updated: ChatThread = { ...thread, at: Date.now(), messages }
     addChatThread(updated)
     onThreadUpdate(updated)
@@ -242,7 +257,7 @@ export function ChatWindow({
     if (!q || busy) return
     setInput('')
     setMsgs((prev) => [...prev, { role: 'user', text: q }])
-    await runTurn([...thread.messages, { role: 'user', content: q }])
+    await runTurn([...llmHistory(), { role: 'user', content: q }])
   }
 
   // 首页新开会话只落了首条 user 消息，挂载后自动补跑 AI 回复；StrictMode 双跑用 ref 挡住
@@ -252,10 +267,15 @@ export function ChatWindow({
     autoRan.current = true
     const last = thread.messages[thread.messages.length - 1]
     if (last?.role === 'user') {
-      void runTurn(thread.messages)
+      void runTurn(llmHistory())
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /** 送 LLM 的历史只保留 user/assistant：tool/card 是本地留痕，OpenAI 协议不接受无 tool_call_id 的 tool 消息 */
+  function llmHistory(): ChatMessage[] {
+    return thread.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  }
 
   return (
     <>

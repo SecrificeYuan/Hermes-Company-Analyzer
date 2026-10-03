@@ -33,6 +33,22 @@ describe('lib/chat-history', () => {
     window.localStorage.setItem('hermes-chat-threads', JSON.stringify([{ id: 'ok', title: 't', at: 1, messages: [] }, { bad: true }]))
     expect(getChatThreads()).toHaveLength(1)
   })
+
+  it('接受 tool/card 留痕消息（content 为 label 或卡片 JSON）', () => {
+    addChatThread({
+      id: 't-toolcard', title: 'tc', at: 4,
+      messages: [
+        { role: 'user', content: '查一下杭州银行' },
+        { role: 'tool', content: '正在拍摄 X 光（约 6 秒）…', name: 'run_xray' },
+        { role: 'card', content: '{"reportId":"600926","name":"杭州银行"}' },
+        { role: 'assistant', content: '结论…' },
+      ],
+    })
+    const found = getChatThreads().find((t) => t.id === 't-toolcard')
+    expect(found?.messages).toHaveLength(4)
+    expect(found?.messages[1]).toMatchObject({ role: 'tool', name: 'run_xray' })
+    expect(found?.messages[2].role).toBe('card')
+  })
 })
 
 describe('deleteChatThread', () => {
