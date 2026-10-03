@@ -3,6 +3,7 @@
 import { Ghost } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useXrayStore } from '@/lib/store'
+import { SignalExplainer } from './SignalExplainer'
 import type { HiddenStatus } from '@/lib/types'
 
 const SEV_LABEL = { high: '高危', mid: '注意', low: '轻微' } as const
@@ -19,8 +20,8 @@ function TierPips({ tier }: { tier: { current: number; max: number } }) {
   )
 }
 
-/** 隐藏状态列表：人话标题+中文严重度+层数刻度；点击开证据抽屉 */
-export function HiddenStatusList({ items }: { items: HiddenStatus[] }) {
+/** 隐藏状态列表：人话标题+中文严重度+层数刻度；点击开证据抽屉；可选 AI 解释展开 */
+export function HiddenStatusList({ items, reportId }: { items: HiddenStatus[]; reportId?: string }) {
   const setActive = useXrayStore((s) => s.setActiveStatus)
 
   if (items.length === 0) {
@@ -34,22 +35,29 @@ export function HiddenStatusList({ items }: { items: HiddenStatus[] }) {
   return (
     <div className="space-y-2.5">
       {items.map((d) => (
-        <button key={d.id} onClick={() => setActive(d)} className="glass-card glass-card-hover group w-full p-3.5 text-left">
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-              <Ghost className="h-4 w-4 text-grape" />
-              {d.label}
-            </span>
-            <span className="flex items-center gap-2">
-              {d.tier && <TierPips tier={d.tier} />}
-              <Badge variant={SEV_VARIANT[d.severity]}>{SEV_LABEL[d.severity]}</Badge>
-            </span>
-          </div>
-          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-400">{d.description}</p>
-          <div className="mt-2 font-mono text-[10px] text-neon/60 opacity-0 transition-opacity group-hover:opacity-100">
-            ▸ 点击查看 {d.evidence.length} 条证据
-          </div>
-        </button>
+        <div key={d.id} className="glass-card glass-card-hover group p-3.5">
+          <button onClick={() => setActive(d)} className="w-full text-left">
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                <Ghost className="h-4 w-4 text-grape" />
+                {d.label}
+              </span>
+              <span className="flex items-center gap-2">
+                {d.tier && <TierPips tier={d.tier} />}
+                <Badge variant={SEV_VARIANT[d.severity]}>{SEV_LABEL[d.severity]}</Badge>
+              </span>
+            </div>
+            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-400">{d.description}</p>
+            <div className="mt-2 font-mono text-[10px] text-neon/60 opacity-0 transition-opacity group-hover:opacity-100">
+              ▸ 点击查看 {d.evidence.length} 条证据
+            </div>
+          </button>
+          {reportId && (
+            <div className="mt-1">
+              <SignalExplainer reportId={reportId} signalId={d.id} />
+            </div>
+          )}
+        </div>
       ))}
     </div>
   )

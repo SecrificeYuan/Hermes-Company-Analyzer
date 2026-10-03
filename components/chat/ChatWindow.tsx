@@ -27,14 +27,22 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   confirm_company: ShieldCheck,
   run_xray: ScanLine,
   run_health_check: HeartPulse,
+  get_market_quote: Search,
+  get_fund_flow: Search,
+  get_news: Search,
+  compare_companies: Search,
+  get_announcements: Search,
 }
 
 export function ChatWindow({
   thread,
   onThreadUpdate,
+  reportId,
 }: {
   thread: ChatThread
   onThreadUpdate: (t: ChatThread) => void
+  /** 报告页「追问 AI」入口：把该报告 id 透传给 /api/chat，服务端注入全量事实快照 */
+  reportId?: string | null
 }) {
   const [msgs, setMsgs] = useState<UiMsg[]>(() =>
     thread.messages
@@ -137,7 +145,7 @@ export function ChatWindow({
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: apiMessages, reportId: reportId ?? undefined }),
       })
       if (!res.ok || !res.body) {
         let errMsg = '请求失败，请稍后重试。'

@@ -21,11 +21,13 @@ function ChatPageInner() {
   const params = useSearchParams()
   const threadId = params.get('thread')
   const company = params.get('company')
+  const reportId = params.get('report')
   const [thread, setThread] = useState<ChatThread | null>(null)
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [checked, setChecked] = useState(false)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const companyBooted = useRef(false)
+  const reportBooted = useRef(false)
 
   const refreshThreads = useCallback(async () => {
     setThreads(await hydrateChatThreads())
@@ -67,6 +69,22 @@ function ChatPageInner() {
     addChatThread(fresh)
     router.replace(`/chat?thread=${fresh.id}`)
   }, [company, threadId, router])
+
+  useEffect(() => {
+    // 报告页「追问 AI」入口：/chat?report=<id> → 自动开新线程，首条消息引导追问，
+    // ChatWindow 通过 reportId prop 把该报告全量事实注入 /api/chat 作为系统上下文
+    if (!reportId || threadId) return
+    if (reportBooted.current) return
+    reportBooted.current = true
+    const fresh: ChatThread = {
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `t-${Date.now()}`,
+      title: '报告追问',
+      at: Date.now(),
+      messages: [{ role: 'user', content: '我刚看完这家公司的 X 光报告，想继续追问几个点。' }],
+    }
+    addChatThread(fresh)
+    router.replace(`/chat?thread=${fresh.id}&report=${encodeURIComponent(reportId)}`)
+  }, [reportId, threadId, router])
 
   /** 两步删除：第一次点击进入「确认？」，3s 内再点才真正删 */
   function requestDelete(id: string) {
@@ -153,7 +171,7 @@ function ChatPageInner() {
           </Link>
           <span className="font-mono text-xs tracking-[0.25em] text-slate-400">HERMES · 对话</span>
         </header>
-        <ChatWindow key={thread.id} thread={thread} onThreadUpdate={setThread} />
+        <ChatWindow key={thread.id} thread={thread} onThreadUpdate={setThread} reportId={reportId} />
       </section>
     </main>
   )

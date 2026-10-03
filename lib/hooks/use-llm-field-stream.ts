@@ -124,7 +124,7 @@ export function useLlmFieldStream(
           for (const block of blocks) {
             const line = block.trim()
             if (!line.startsWith('data:')) continue
-            let ev: { type?: string; field?: string; text?: string; model?: string; generatedAt?: string; message?: string }
+            let ev: { type?: string; field?: string; text?: string; delta?: string; done?: boolean; model?: string; generatedAt?: string; message?: string; cached?: boolean; hasSummary?: boolean }
             try {
               ev = JSON.parse(line.slice(5).trim())
             } catch {
@@ -138,6 +138,15 @@ export function useLlmFieldStream(
               } else {
                 queueRef.current.push({ slot: ev.field, text: ev.text })
               }
+              setTick((t) => t + 1)
+            } else if (ev.type === 'stream' && ev.field && typeof ev.delta === 'string') {
+              // 真流式增量：直接推进/初始化对应 slot 的打字机（打字机即流式渲染，天然边到边显）
+              receivedRef.current = true
+              setTyping((t) =>
+                t && t.slot === ev.field
+                  ? { ...t, full: t.full + ev.delta! }
+                  : { slot: ev.field!, full: ev.delta!, len: 0 },
+              )
               setTick((t) => t + 1)
             } else if (ev.type === 'done') {
               doneRef.current = true

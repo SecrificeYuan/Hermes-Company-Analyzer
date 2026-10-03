@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import Link from 'next/link'
 import { MessageSquare, RotateCcw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Markdown } from '@/components/chat/Markdown'
 import { useMode } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import { useLlmFieldStream } from '@/lib/hooks/use-llm-field-stream'
@@ -86,13 +87,17 @@ export function AiInsightCard({
           </p>
         ) : (
           <>
-            {/* 整体点评：最先到达，打字机逐字 */}
-            <p className="mt-3 min-h-6 text-sm leading-relaxed text-slate-200">
-              {summaryVal ?? 'AI 正在读这份 X 光片…'}
+            {/* 整体点评：真流式 markdown 渲染，边到边显 */}
+            <div className="mt-3 min-h-6">
+              {summaryVal !== undefined ? (
+                <Markdown text={summaryVal} />
+              ) : (
+                <p className="text-sm text-slate-400">AI 正在读这份 X 光片…</p>
+              )}
               {summaryVal !== undefined && display.summary === undefined && (
                 <span className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse bg-grape/80" />
               )}
-            </p>
+            </div>
 
             {/* 灯语一句话解释 */}
             {lightVal !== undefined && (
@@ -147,7 +152,7 @@ export function AiInsightCard({
         {/* 底部：追问入口 + 生成信息 */}
         <div className="mt-4 flex items-center justify-between border-t border-edge pt-3">
           <Link
-            href={`/chat?company=${encodeURIComponent(companyName)}`}
+            href={`/chat?report=${encodeURIComponent(reportId)}`}
             className="flex items-center gap-1.5 font-mono text-[11px] tracking-wider text-neon transition-colors hover:text-neon/80"
           >
             <MessageSquare className="h-3.5 w-3.5" />

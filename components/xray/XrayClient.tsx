@@ -139,7 +139,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
                   <span className="text-grape">×{displayXray.hiddenStatus.length}</span>
                 </div>
                 <div className="max-h-72 overflow-y-auto pr-1">
-                  <HiddenStatusList items={displayXray.hiddenStatus} />
+                  <HiddenStatusList items={displayXray.hiddenStatus} reportId={displayXray.id} />
                 </div>
               </div>
               {order.map((id, i) => {

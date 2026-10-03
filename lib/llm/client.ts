@@ -22,6 +22,8 @@ export interface ChatOptions {
   messages: ChatMessage[]
   tools?: ToolSpec[]
   maxTokens?: number
+  /** 模型场景分档（chat/insight），经 LLM_MODEL_<SCENE> env 覆盖主模型 */
+  scene?: string
   /** 单次请求超时（默认 30s）；喂推理模型大 payload 时按需加大 */
   timeoutMs?: number
   signal?: AbortSignal
@@ -29,16 +31,23 @@ export interface ChatOptions {
 
 const TIMEOUT_MS = 30_000
 
-function llmConfig(): { baseUrl: string; apiKey: string; model: string } | null {
+function llmConfig(scene?: string): { baseUrl: string; apiKey: string; model: string } | null {
   const baseUrl = process.env.LLM_BASE_URL?.replace(/\/+$/, '')
   const apiKey = process.env.LLM_API_KEY
-  const model = process.env.LLM_MODEL
+  // per-scene 模型覆盖口：LLM_MODEL_CHAT / LLM_MODEL_INSIGHT 等，缺省回落主 LLM_MODEL
+  const model =
+    (scene ? process.env[`LLM_MODEL_${scene.toUpperCase()}`] : undefined) ?? process.env.LLM_MODEL
   if (!baseUrl || !apiKey || !model) return null
   return { baseUrl, apiKey, model }
 }
 
 export function llmAvailable(): boolean {
   return llmConfig() !== null
+}
+
+/** 当前场景实际生效的模型 id（用于把 model 维度写进缓存键，防换模型后回放旧内容） */
+export function llmModelId(scene?: string): string {
+  return llmConfig(scene)?.model ?? 'unknown'
 }
 
 function buildRequest(cfg: NonNullable<ReturnType<typeof llmConfig>>, opts: ChatOptions, stream: boolean) {
@@ -55,6 +64,9 @@ function buildRequest(cfg: NonNullable<ReturnType<typeof llmConfig>>, opts: Chat
         messages: opts.messages,
         tools: opts.tools,
         max_tokens: opts.maxTokens,
+        // deepseek 系网关偶尔在 stream 下漏掉最后一个 content 增量而以 [DONE] 截断；
+        // stream_options 让 usage 走完整字段，实测不干扰协议，留作兜底稳态
+        stream_options: stream ? { include_usage: true } : undefined,
         stream,
       }),
       signal: opts.signal,
@@ -80,7 +92,7 @@ function buildUrlSignal(signal: AbortSignal | undefined, timeoutMs?: number): { 
 }
 
 export async function chatOnce(opts: ChatOptions): Promise<ChatResult | null> {
-  const cfg = llmConfig()
+  const cfg = llmConfig(opts.scene)
   if (!cfg) return null
 
   // 仅 JSON 解析失败重试 1 次；网络/HTTP 错误不重试
@@ -137,7 +149,7 @@ function safeParseArgs(args: string | undefined): Record<string, unknown> {
 export async function* chatStream(opts: ChatOptions): AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done' }> {
   let finished = false
   try {
-    const cfg = llmConfig()
+    const cfg = llmConfig(opts.scene)
     if (!cfg) return
     const { signal, clear } = buildUrlSignal(opts.signal, opts.timeoutMs)
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null

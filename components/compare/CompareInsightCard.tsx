@@ -4,6 +4,7 @@
 import { useCallback } from 'react'
 import { RotateCcw, Swords } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Markdown } from '@/components/chat/Markdown'
 import { LlmPlaceholder } from './LlmPlaceholder'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
@@ -83,14 +84,14 @@ export function CompareInsightCard({ a, b }: { a: CompanyXRay; b: CompanyXRay })
               </span>
             </p>
 
-            {/* 整体归因 */}
+            {/* 整体归因：真流式 markdown */}
             {summaryVal !== undefined && (
-              <p className="mt-2.5 text-sm leading-relaxed text-slate-200">
-                {summaryVal}
+              <div className="mt-2.5">
+                <Markdown text={summaryVal} />
                 {display.summary === undefined && (
                   <span className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse bg-grape/80" />
                 )}
-              </p>
+              </div>
             )}
 
             {/* 五维归因 */}
