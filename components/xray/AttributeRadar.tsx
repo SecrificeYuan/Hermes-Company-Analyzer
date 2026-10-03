@@ -6,20 +6,20 @@ import { baseChartOptionFor } from '@/lib/theme/echarts-themes'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
+import { dimensionAvailability } from '@/lib/evidence-availability'
 
 /** 五维雷达：HP / DEF / ATK(涉诉) / 士气 / 稳健，主色=主题 accent 半透明填充 */
 export function AttributeRadar({ xray, height = 250 }: { xray: CompanyXRay; height?: number }) {
   const t = useTokens()
   const mode = useMode()
   const terms = getTerms(mode)
+  const available = dimensionAvailability(xray)
 
   const option: EChartsOption = {
     ...baseChartOptionFor(t),
     radar: {
       indicator: terms.radarIndicators.map((name, index) => ({
-        name: index === 2 && xray.atk.available === false
-          ? `${name}（暂无法判断）`
-          : index === 3 && xray.morale.available === false ? `${name}（待加载）` : name,
+        name: available[index] ? name : `${name}（暂无法判断）`,
         max: 100,
       })),
       radius: '68%',
@@ -33,7 +33,7 @@ export function AttributeRadar({ xray, height = 250 }: { xray: CompanyXRay; heig
         type: 'radar',
         data: [
           {
-            value: [xray.hp.score, xray.def.score, xray.atk.available === false ? '-' : xray.atk.score, xray.morale.available === false ? '-' : xray.morale.score, 100 - xray.riskScore],
+            value: [xray.hp.score, xray.def.score, xray.atk.score, xray.morale.score, 100 - xray.riskScore].map((value, i) => available[i] ? value : '-'),
             name: terms.radarSeriesName,
             areaStyle: { color: `${t.colors.accent}38` },
             lineStyle: { color: t.colors.accent, width: 2 },

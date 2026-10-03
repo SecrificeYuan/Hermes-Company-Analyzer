@@ -9,7 +9,7 @@ const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v))
 export function scoreHp(financial: RawCompanyData['financial']): CompanyXRay['hp'] {
   const years = financial?.years ?? []
   if (years.length === 0) {
-    return { score: 50, label: '数据不足', cashFlow: 0, debtRatio: 0, trend: [] }
+    return { score: 50, label: '数据不足', cashFlow: 0, debtRatio: 0, trend: [], available: false }
   }
   const latest = years[years.length - 1]
 
@@ -28,6 +28,7 @@ export function scoreHp(financial: RawCompanyData['financial']): CompanyXRay['hp
     score >= 80 ? '满血状态' : score >= 60 ? '血条健康' : score >= 40 ? '轻度失血' : score >= 20 ? '重度失血' : '濒死抢救'
 
   return {
+    available: true,
     score,
     label,
     cashFlow: latest.operatingCashFlow,

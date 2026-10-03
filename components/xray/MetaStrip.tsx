@@ -16,6 +16,7 @@ import { useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
 import type { CompanyHealth } from '@/lib/company'
+import { riskAvailable } from '@/lib/evidence-availability'
 
 const RISK_META = {
   green: { label: '低风险', en: 'CLEAN', Icon: ShieldCheck },
@@ -71,10 +72,11 @@ function CopyBtn({ text }: { text: string }) {
  * 两列元信息 / HASH 块 / 结论）+ 右列评分 + 底部横排操作按钮。无多余边框分隔线。
  */
 export function MetaStrip({ xray, health }: { xray: CompanyXRay; health?: CompanyHealth }) {
-  const meta = RISK_META[xray.overallRisk]
+  const assessed = !health && riskAvailable(xray)
+  const meta = assessed ? RISK_META[xray.overallRisk] : { label: '资料不足', en: 'UNKNOWN', Icon: AlertTriangle }
   const t = useTokens()
   const terms = getTerms('pro')
-  const color = t.riskColor[xray.overallRisk]
+  const color = assessed ? t.riskColor[xray.overallRisk] : t.colors.textDim
   const r = xray.registry
   const quote = useTencentQuote(health ? undefined : xray.stockCode)
   const quoteColor = quote && quote.change > 0 ? t.colors.danger : quote && quote.change < 0 ? t.colors.safe : t.colors.textDim
@@ -85,12 +87,12 @@ export function MetaStrip({ xray, health }: { xray: CompanyXRay; health?: Compan
     { k: '所属行业', v: xray.industry },
     ...(r ? [{ k: terms.metaStrip.foundedAt, v: r.foundedAt }] : []),
     ...(r ? [{ k: terms.metaStrip.registeredCapital, v: formatWan(r.registeredCapital) }] : []),
-    { k: '风险评分', v: (
+    { k: '风险评分', v: assessed ? (
       <>
         <span className="font-semibold" style={{ color }}>{xray.riskScore}</span>
         <span className="text-slate-600"> / 100</span>
       </>
-    ) },
+    ) : '暂无法判断' },
   ]
 
   return (
@@ -138,7 +140,7 @@ export function MetaStrip({ xray, health }: { xray: CompanyXRay; health?: Compan
                 {xray.stockCode ?? 'UNLISTED'} · {xray.industry}
               </span>
               {/* 健康度小环（原右栏融入标题行） */}
-              {!health && <span className="ml-1 inline-flex items-center gap-1.5 self-center" title={terms.healthLabel}>
+              {!health && xray.hp.available !== false && <span className="ml-1 inline-flex items-center gap-1.5 self-center" title={terms.healthLabel}>
                 <span
                   className="flex h-9 w-9 items-center justify-center rounded-full"
                   style={{ background: `conic-gradient(${color} 0 ${xray.hp.score * 3.6}deg, ${t.colors.edge} ${xray.hp.score * 3.6}deg 360deg)` }}

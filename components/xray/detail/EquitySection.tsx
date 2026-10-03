@@ -6,6 +6,7 @@ import { announcementsFor } from './announcement-split'
 import { formatWan } from '@/lib/utils'
 import { useTokens } from '@/lib/theme/use-tokens'
 import type { CompanyXRay } from '@/lib/types'
+import { pledgeAvailable } from '@/lib/evidence-availability'
 
 /** 质押大数字摘要：速览层 equity 图位使用（详读层见 EquitySection） */
 export function PledgeSummary({ xray }: { xray: CompanyXRay }) {
@@ -13,6 +14,7 @@ export function PledgeSummary({ xray }: { xray: CompanyXRay }) {
   const p = xray.def.pledgeRatio
   const color = p >= 60 ? t.riskColor.red : p >= 40 ? t.riskColor.yellow : t.riskColor.green
   const status = p >= 60 ? '已爆预警线' : p >= 40 ? '逼近预警线' : '未质押警戒'
+  if (!pledgeAvailable(xray)) return <p className="font-mono text-xs text-slate-400">质押资料不足，比例暂无法判断；资料缺失不等于没有质押。</p>
   return (
     <div className="flex items-center gap-8">
       <div>
@@ -23,8 +25,8 @@ export function PledgeSummary({ xray }: { xray: CompanyXRay }) {
         <div className="mt-1 font-mono text-[11px] text-slate-500">股权质押比例 · {status}</div>
       </div>
       <div className="font-mono text-xs leading-relaxed text-slate-400">
-        实控人质押占总股本 {xray.def.pledgeRatio}%<br />
-        资产覆盖率 {xray.def.assetCoverage}
+        已披露股票质押比例 {xray.def.pledgeRatio}%<br />
+        资产覆盖率 {xray.hp.available === false ? '待核实' : xray.def.assetCoverage}
       </div>
     </div>
   )

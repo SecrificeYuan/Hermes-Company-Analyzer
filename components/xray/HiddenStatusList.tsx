@@ -17,7 +17,7 @@ export function HiddenStatusList({ items }: { items: HiddenStatus[] }) {
   if (items.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-safe/30 bg-safe/5 p-4 text-center font-mono text-xs text-safe">
-        ✓ 未发现隐藏状态 —— 干净得不像实力派
+        已读取资料中未触发风险规则；缺失资料仍需核实。
       </div>
     )
   }

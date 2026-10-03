@@ -28,7 +28,7 @@ function StatusColumn({ company, items }: { company: string; items: HiddenStatus
           className="rounded-lg border border-dashed p-4 text-center font-mono text-xs"
           style={{ borderColor: t.colors.edge, color: t.colors.textFaint }}
         >
-          无记录
+          已读取资料中未触发风险规则；缺失资料仍需核实。
         </div>
       ) : (
         <div className="space-y-2">

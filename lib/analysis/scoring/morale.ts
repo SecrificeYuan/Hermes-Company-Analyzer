@@ -37,7 +37,7 @@ export function scoreMorale(
   const trend = monthly.map(([, v]) => Math.round((v.sum / v.n) * 10) / 10)
   const labels = monthly.map(([m]) => m)
 
-  const label = score >= 70 ? '士气高涨' : score >= 50 ? '军心稳定' : score >= 30 ? '流言四起' : '人心惶惶'
+  const label = Math.abs(avgTone) < 0.5 ? '报道接近中性' : avgTone >= 3 ? '报道明显偏正面' : avgTone > 0 ? '报道略偏正面' : avgTone <= -3 ? '报道明显偏负面' : '报道略偏负面'
 
   return { score, label, avgTone, trend, labels, available: true }
 }

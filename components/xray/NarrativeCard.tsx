@@ -16,11 +16,7 @@ function pickEvidence(items: HiddenStatus[]): HiddenStatus | undefined {
 export function NarrativeCard({ id, k, xray, compact }: { id: string; k: NarrativeKey; xray: CompanyXRay; compact?: boolean }) {
   const setActiveStatus = useXrayStore((s) => s.setActiveStatus)
   const terms = getTerms('lite')
-  const model = k === 'atk' && xray.atk.available === false
-    ? { big: '暂无法判断', caption: '司法数据暂未接入', text: '当前无法核验诉讼、被执行与失信记录，不能据此推断公司不存在司法风险。' }
-    : k === 'morale' && xray.morale.available === false
-    ? { big: '待加载', caption: '东方财富新闻', text: '舆情数据正在独立获取，暂不生成正面或负面结论。' }
-    : narrativeCopy(k, xray)
+  const model = narrativeCopy(k, xray)
   const evidence = pickEvidence(xray.hiddenStatus)
 
   if (compact) {

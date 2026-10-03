@@ -26,9 +26,9 @@ export function FinancialSection({ xray, health }: { xray: CompanyXRay; health?:
     <div className="space-y-6">
       <CashFlowChart hp={xray.hp} height={280} />
       <div className="grid gap-4 sm:grid-cols-3">
-        <Metric label="资产负债率" value={health ? pct(health.metrics.debtRatio ?? undefined) : pct(xray.hp.debtRatio)} />
-        <Metric label="最新经营现金流" value={health && health.metrics.operatingCashFlow === null ? '—' : formatWan(xray.hp.cashFlow)} />
-        <Metric label={health ? '财务健康风险' : '健康度 HP'} value={health ? health.financialRisk === 'low' ? '较低' : health.financialRisk === 'medium' ? '中等' : health.financialRisk === 'high' ? '较高' : '资料不足' : `${xray.hp.score} / 100`} />
+        <Metric label="资产负债率" value={health ? pct(health.metrics.debtRatio ?? undefined) : xray.hp.available === false ? '待核实' : pct(xray.hp.debtRatio)} />
+        <Metric label="最新经营现金流" value={health ? health.metrics.operatingCashFlow === null ? '待核实' : formatWan(health.metrics.operatingCashFlow) : xray.hp.available === false ? '待核实' : formatWan(xray.hp.cashFlow)} />
+        <Metric label={health ? '财务健康风险' : '健康度 HP'} value={health ? health.financialRisk === 'low' ? '较低' : health.financialRisk === 'medium' ? '中等' : health.financialRisk === 'high' ? '较高' : '资料不足' : xray.hp.available === false ? '待核实' : `${xray.hp.score} / 100`} />
       </div>
       <DetailTable
         rows={ordered}

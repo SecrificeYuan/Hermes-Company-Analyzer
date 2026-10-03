@@ -29,18 +29,21 @@ export function analyze(raw: RawCompanyData, asOf = new Date(raw.meta.fetchedAt)
   // 综合风险分只消费已验证切片，并按剩余权重重新归一化。
   // 缺失司法/舆情时的 50 分只是兼容占位，绝不能把“未知”伪装为中性结论。
   const components = [
-    { value: hp.score, weight: 0.35, available: true },
-    { value: def.score, weight: 0.25, available: true },
+    { value: hp.score, weight: 0.35, available: hp.available !== false },
+    { value: def.score, weight: 0.25, available: def.available !== false },
     { value: 100 - atk.score, weight: 0.15, available: atk.available !== false },
     { value: morale.score, weight: 0.25, available: morale.available !== false },
   ]
   const availableComponents = components.filter((component) => component.available)
   const totalWeight = availableComponents.reduce((sum, component) => sum + component.weight, 0)
-  const composite = availableComponents.reduce((sum, component) => sum + component.value * component.weight, 0) / totalWeight
+  const composite = totalWeight > 0 ? availableComponents.reduce((sum, component) => sum + component.value * component.weight, 0) / totalWeight : 50
   const riskScore = Math.round(clamp(100 - composite + debuffPenalty))
   const overallRisk = riskScore < 35 ? 'green' : riskScore < 65 ? 'yellow' : 'red'
 
-  const { verdict, advice } = buildVerdict({
+  const { verdict, advice } = hp.available === false || def.available === false ? {
+    verdict: '财务或股权质押资料尚不完整，暂无法给出完整的风险评分；缺失资料不代表没有风险。',
+    advice: '请先核实缺失的财务与质押资料，再结合其他已取得的证据判断。',
+  } : buildVerdict({
     industry: raw.meta.industry,
     hp: hp.score,
     def: def.score,

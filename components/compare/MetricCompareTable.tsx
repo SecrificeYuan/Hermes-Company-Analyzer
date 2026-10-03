@@ -5,6 +5,7 @@ import { formatWan } from '@/lib/utils'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
+import { completeComparisonData, pledgeAvailable } from '@/lib/evidence-availability'
 
 type Direction = 'higher-better' | 'lower-better'
 
@@ -72,6 +73,15 @@ export function MetricCompareTable({ a, b }: { a: CompanyXRay; b: CompanyXRay })
     { key: 'steady', label: '稳健度（100-风险分）', a: 100 - a.riskScore, b: 100 - b.riskScore, direction: 'higher-better', format: id, spark: null },
   ]
 
+  const available = (x: CompanyXRay, key: string): boolean => {
+    if (['hp', 'cashflow', 'debt', 'coverage'].includes(key)) return x.hp.available !== false
+    if (key === 'def') return x.def.available !== false
+    if (key === 'pledge') return pledgeAvailable(x)
+    if (['atk', 'lawsuits', 'exec'].includes(key)) return x.atk.available !== false
+    if (['morale', 'tone'].includes(key)) return x.morale.available !== false
+    return completeComparisonData(x)
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse font-mono text-xs">
@@ -86,23 +96,26 @@ export function MetricCompareTable({ a, b }: { a: CompanyXRay; b: CompanyXRay })
         </thead>
         <tbody>
           {rows.map((r) => {
+            const aAvailable = available(a, r.key)
+            const bAvailable = available(b, r.key)
+            const comparable = aAvailable && bAvailable
             const raw = r.a - r.b
-            const good = raw === 0 ? null : r.direction === 'higher-better' ? raw > 0 : raw < 0
+            const good = !comparable || raw === 0 ? null : r.direction === 'higher-better' ? raw > 0 : raw < 0
             const color = good === null ? t.colors.textDim : good ? t.colors.safe : t.colors.danger
             return (
               <tr key={r.key} className="border-t" style={{ borderColor: t.colors.edge }}>
                 <td className="py-2.5 pr-4" style={{ color: t.colors.textDim }}>{r.label}</td>
-                <td className="py-2.5 pr-4 text-right" style={{ color: t.colors.textMain }}>{r.format(r.a)}</td>
-                <td className="py-2.5 pr-4 text-right" style={{ color: t.colors.textMain }}>{r.format(r.b)}</td>
+                <td className="py-2.5 pr-4 text-right" style={{ color: t.colors.textMain }}>{aAvailable ? r.format(r.a) : '待核实'}</td>
+                <td className="py-2.5 pr-4 text-right" style={{ color: t.colors.textMain }}>{bAvailable ? r.format(r.b) : '待核实'}</td>
                 <td className="py-2.5 pr-4 text-right" style={{ color }}>
-                  {raw === 0 ? '±0' : `${raw > 0 ? '▲' : '▼'} ${r.format(Math.abs(raw))}`}
+                  {!comparable ? '无法比较' : raw === 0 ? '±0' : `${raw > 0 ? '▲' : '▼'} ${r.format(Math.abs(raw))}`}
                 </td>
                 <td className="py-2.5">
                   <div className="flex items-center justify-end gap-2">
                     {r.spark ? (
                       <>
-                        <Spark data={r.spark.a} color={t.colors.accent} />
-                        <Spark data={r.spark.b} color={t.colors.textDim} />
+                        {aAvailable && <Spark data={r.spark.a} color={t.colors.accent} />}
+                        {bAvailable && <Spark data={r.spark.b} color={t.colors.textDim} />}
                       </>
                     ) : (
                       <span style={{ color: t.colors.textFaint }}>—</span>

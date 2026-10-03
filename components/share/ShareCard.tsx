@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useTokens } from '@/lib/theme/use-tokens'
 import { scoreColor } from '@/lib/theme'
 import type { CompanyXRay } from '@/lib/types'
+import { riskAvailable } from '@/lib/evidence-availability'
 
 /**
  * 分享卡：把隐藏的分享卡片渲染成 PNG 下载（html2canvas）。
@@ -15,10 +16,10 @@ export function ShareCard({ xray }: { xray: CompanyXRay }) {
   const t = useTokens()
   const cardRef = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
-  const color = t.riskColor[xray.overallRisk]
+  const color = riskAvailable(xray) ? t.riskColor[xray.overallRisk] : t.colors.textDim
   const attributes = [
-    { label: 'HP', value: String(xray.hp.score), score: xray.hp.score, available: true },
-    { label: 'DEF', value: String(xray.def.score), score: xray.def.score, available: true },
+    { label: 'HP', value: xray.hp.available === false ? '待核实' : String(xray.hp.score), score: xray.hp.score, available: xray.hp.available !== false },
+    { label: 'DEF', value: xray.def.available === false ? '待核实' : String(xray.def.score), score: xray.def.score, available: xray.def.available !== false },
     {
       label: 'ATK',
       value: xray.atk.available === false ? '待核验' : String(xray.atk.score),
@@ -27,7 +28,7 @@ export function ShareCard({ xray }: { xray: CompanyXRay }) {
     },
     {
       label: '士气',
-      value: xray.morale.available === false ? '待加载' : String(xray.morale.score),
+      value: xray.morale.available === false ? '待核实' : String(xray.morale.score),
       score: xray.morale.score,
       available: xray.morale.available !== false,
     },
@@ -86,7 +87,7 @@ export function ShareCard({ xray }: { xray: CompanyXRay }) {
             </div>
             <div className="text-right">
               <div className="font-mono text-xs tracking-[0.3em] text-slate-500">RISK SCORE</div>
-              <div className="text-8xl font-bold" style={{ color }}>{xray.riskScore}</div>
+              <div className="text-8xl font-bold" style={{ color }}>{riskAvailable(xray) ? xray.riskScore : '待核实'}</div>
             </div>
           </div>
         </div>
