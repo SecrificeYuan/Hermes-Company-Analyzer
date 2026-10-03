@@ -1,10 +1,10 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, MessageSquare, Trash2 } from 'lucide-react'
-import { deleteChatThread, getChatThreads, type ChatThread } from '@/lib/chat-history'
+import { deleteChatThread, hydrateChatThreads, addChatThread, type ChatThread } from '@/lib/chat-history'
 import { ChatWindow } from '@/components/chat/ChatWindow'
 
 function formatAt(at: number): string {
@@ -20,23 +20,53 @@ function ChatPageInner() {
   const router = useRouter()
   const params = useSearchParams()
   const threadId = params.get('thread')
+  const company = params.get('company')
   const [thread, setThread] = useState<ChatThread | null>(null)
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [checked, setChecked] = useState(false)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const companyBooted = useRef(false)
 
-  const refreshThreads = useCallback(() => setThreads(getChatThreads()), [])
+  const refreshThreads = useCallback(async () => {
+    setThreads(await hydrateChatThreads())
+  }, [])
 
   useEffect(() => {
-    refreshThreads()
-    const found = threadId ? getChatThreads().find((t) => t.id === threadId) : undefined
-    if (!found) {
-      router.replace('/')
-      return
+    let cancelled = false
+    // 先同步读一次本地列表避免闪烁，再 hydrate 合并服务端会话
+    void hydrateChatThreads().then((merged) => {
+      if (cancelled) return
+      setThreads(merged)
+      if (!threadId) return
+      const found = merged.find((t) => t.id === threadId)
+      if (!found) {
+        router.replace('/')
+        return
+      }
+      setThread(found)
+      setChecked(true)
+    })
+    return () => {
+      cancelled = true
     }
-    setThread(found)
-    setChecked(true)
-  }, [params, router, threadId, refreshThreads])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId])
+
+  useEffect(() => {
+    // 报告页「追问 AI」入口：/chat?company=xxx → 自动开新线程并注入首条消息，
+    // 落到 thread 后 ChatWindow 的 auto-run 机制会自动跑 Agent；company 参数一次性消费
+    if (!company || threadId) return
+    if (companyBooted.current) return
+    companyBooted.current = true
+    const fresh: ChatThread = {
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `t-${Date.now()}`,
+      title: company,
+      at: Date.now(),
+      messages: [{ role: 'user', content: `帮我评估一下「${company}」这家公司，我正考虑付钱给它。` }],
+    }
+    addChatThread(fresh)
+    router.replace(`/chat?thread=${fresh.id}`)
+  }, [company, threadId, router])
 
   /** 两步删除：第一次点击进入「确认？」，3s 内再点才真正删 */
   function requestDelete(id: string) {
@@ -46,6 +76,9 @@ function ChatPageInner() {
       setThreads(rest)
       if (id === threadId) {
         router.replace(rest[0] ? `/chat?thread=${rest[0].id}` : '/')
+      } else {
+        // 服务端可能还有本地未缓存的会话，删完回拉一次保证侧栏准确
+        void refreshThreads()
       }
       return
     }

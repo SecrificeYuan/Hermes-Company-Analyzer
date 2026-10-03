@@ -3,9 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { CompanyXRay } from '@/lib/types'
 
-/** 速览层右下角补位卡（方案 C）：AI 摘要预览 + 跳转 #ai 详读 section。 */
-export function AiGlanceCard({ xray }: { xray: CompanyXRay }) {
-  const summary = xray.llm?.summary
+/** 速览层右下角补位卡（方案 C）：AI 摘要预览 + 跳转 #ai 详读 section。
+ *  liveSummary：AiInsightCard 异步生成完后回填，优先于 xray.llm 的预置摘要。 */
+export function AiGlanceCard({ xray, liveSummary }: { xray: CompanyXRay; liveSummary?: string | null }) {
+  const summary = liveSummary ?? xray.llm?.summary
   return (
     <Card
       className="h-full cursor-pointer border-dashed hover:border-neon/60"

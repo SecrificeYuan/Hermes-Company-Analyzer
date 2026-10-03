@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, GitCompareArrows } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -27,9 +27,9 @@ import { LegalSection } from './detail/LegalSection'
 import { SentimentSection } from './detail/SentimentSection'
 import { NetworkSection } from './detail/NetworkSection'
 import { EvidenceSection } from './detail/EvidenceSection'
-import { AiSection } from './detail/AiSection'
 import { ShareCard } from '@/components/share/ShareCard'
 import { AiGlanceCard } from './AiGlanceCard'
+import { AiInsightCard } from './AiInsightCard'
 import { useSentiment } from './useSentiment'
 import { detailOrder, glanceLayout, narrativeOf } from '@/lib/narrative'
 import type { DetailSectionId, GlanceSlot } from '@/lib/narrative'
@@ -75,6 +75,8 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
   const mode = useMode()
   const terms = getTerms(mode)
   const { snapshot: sentiment, loading: sentimentLoading, slow: sentimentSlow } = useSentiment(xray.id)
+  // AI 点评卡生成完 summary 后回填速览层（AiGlanceCard 替换"待生成"占位）
+  const [aiSummary, setAiSummary] = useState<string | null>(null)
   // 只在舆情请求成功后覆盖该切片；综合风险与其余已完成模块保持首次结果，
   // 避免慢源返回时造成报告版式和主结论跳变。
   const displayXray: CompanyXRay = sentiment?.status === 'available' && sentiment.morale
@@ -121,11 +123,9 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
           <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)]">
             <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-h-0 min-w-0 lg:overflow-y-auto">
               <CharacterPanel xray={displayXray} health={health} />
-              {displayXray.nextSteps && (
-                <motion.div variants={riseInView} custom={2} initial="hidden" whileInView="show" viewport={viewport} className="mt-6">
-                  <NextStepsCard nextSteps={displayXray.nextSteps} />
-                </motion.div>
-              )}
+              <motion.div variants={riseInView} custom={2} initial="hidden" whileInView="show" viewport={viewport} className="mt-6">
+                <AiInsightCard reportId={xray.id} companyName={displayXray.name} nextSteps={displayXray.nextSteps} />
+              </motion.div>
             </motion.div>
             <div className="min-h-0 min-w-0 space-y-4 overflow-y-auto pr-1">
               {displayXray.hiddenStatus.length >= 3 && (
@@ -213,7 +213,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
             <motion.div variants={riseInView} custom={1 + layout.rest.length} initial="hidden" whileInView="show" viewport={viewport} className="h-full">
               {health
                 ? <Card className="h-full"><CardHeader><CardTitle>AI 速览</CardTitle></CardHeader><CardContent><MissingMetric label="AI 分析所需证据" /></CardContent></Card>
-                : <AiGlanceCard xray={displayXray} />}
+                : <AiGlanceCard xray={displayXray} liveSummary={aiSummary} />}
             </motion.div>
           </div>
         )}
@@ -231,7 +231,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
             {order.map((id, i) => (
             <motion.div key={id} variants={riseInView} custom={i} initial="hidden" whileInView="show" viewport={viewport}>
               <SectionShell id={id} index={i + 1} title={terms.sections[id]}>
-                <SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} />
+                <SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} onAiSummary={setAiSummary} />
               </SectionShell>
             </motion.div>
             ))}
@@ -257,6 +257,7 @@ function SectionBody({
   sentiment,
   sentimentLoading,
   sentimentSlow,
+  onAiSummary,
 }: {
   id: DetailSectionId
   xray: CompanyXRay
@@ -264,6 +265,7 @@ function SectionBody({
   sentiment?: import('@/lib/types').SentimentSnapshot
   sentimentLoading: boolean
   sentimentSlow: boolean
+  onAiSummary?: (summary: string) => void
 }) {
   if (health && id === 'evidence') return <MissingEvidencePanel health={health} />
   if (health && id === 'financial') return health.years.length ? <FinancialSection xray={xray} health={health} /> : <MissingMetric label="该企业的完整年度财务报表" />
@@ -279,7 +281,7 @@ function SectionBody({
     case 'sentiment': return <SentimentSection xray={xray} snapshot={sentiment} loading={sentimentLoading} slow={sentimentSlow} />
     case 'network': return <NetworkSection xray={xray} />
     case 'evidence': return <EvidenceSection xray={xray} />
-    case 'ai': return <AiSection />
+    case 'ai': return <AiInsightCard reportId={xray.id} companyName={xray.name} onSummary={onAiSummary} />
   }
 }
 
