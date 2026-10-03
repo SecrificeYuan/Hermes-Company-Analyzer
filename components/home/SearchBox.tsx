@@ -23,26 +23,9 @@ export function SearchBox({ onPick }: { onPick: (company: CompanyIdentity) => vo
     return () => document.removeEventListener('pointerdown', closeOutside)
   }, [])
 
-  // 下拉定位：portal 到 body，跟随输入框（fixed 坐标）
-  useEffect(() => {
-    if (!open) return
-    const update = () => {
-      const rect = wrapRef.current?.getBoundingClientRect()
-      if (!rect) return
-      setMenuPos({ top: rect.bottom + 8, left: rect.left, width: rect.width })
-    }
-    update()
-    window.addEventListener('scroll', update, true)
-    window.addEventListener('resize', update)
-    return () => {
-      window.removeEventListener('scroll', update, true)
-      window.removeEventListener('resize', update)
-    }
-  }, [open])
-
-  const pick = (company: ListedCompany) => {
-    onPick(company)
-    setQuery('')
+  const pick = (company: CompanyIdentity) => {
+    abortRef.current?.abort()
+    if (timerRef.current) clearTimeout(timerRef.current)
     setOpen(false)
     setQuery('')
     setItems([])
@@ -86,7 +69,7 @@ export function SearchBox({ onPick }: { onPick: (company: CompanyIdentity) => vo
     void run(query.trim(), true)
   }
   return (
-    <div ref={wrapRef} className="relative w-full max-w-xl">
+    <div ref={containerRef} className="relative w-full max-w-xl">
       <div className="glass-card flex items-center gap-3 px-5 py-4">
         <Search className="h-5 w-5 text-neon" />
         <input

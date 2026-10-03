@@ -11,6 +11,7 @@ import { CashFlowChart } from './CashFlowChart'
 import { CharacterCard } from './CharacterCard'
 import { EvidenceDrawer } from './EvidenceDrawer'
 import { LawsuitHeatmap } from './LawsuitHeatmap'
+import { MiniDimCard } from './MiniDimCard'
 import { NarrativeCard } from './NarrativeCard'
 import { RelationGraph } from './RelationGraph'
 import { SentimentCurve } from './SentimentCurve'
@@ -32,7 +33,7 @@ import { detailOrder, glanceLayout, narrativeOf } from '@/lib/narrative'
 import type { DetailSectionId, GlanceSlot } from '@/lib/narrative'
 import { useMode } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
-import type { CompanyXRay, NarrativeKey } from '@/lib/types'
+import type { CompanyXRay, NarrativeKey, SentimentSnapshot } from '@/lib/types'
 import type { CompanyHealth } from '@/lib/company'
 
 /** 统一出场缓动：ease-out 长尾，避免线性/突变感 */
@@ -54,6 +55,10 @@ const viewport = { once: true, margin: '-80px' } as const
 /** LITE 详读层只渲染五个维度卡（证据入口在每张卡上；ai 为 PRO 专属 section） */
 const LITE_SECTION_KEY: Partial<Record<DetailSectionId, NarrativeKey>> = {
   financial: 'hp', equity: 'def', legal: 'atk', sentiment: 'morale', network: 'network',
+}
+
+const SLOT_KEY: Record<GlanceSlot, NarrativeKey> = {
+  finance: 'hp', equity: 'def', legal: 'atk', sentiment: 'morale', network: 'network',
 }
 
 /** 速览层图位 → 卡片标题（双模式术语） */
@@ -150,7 +155,6 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
       {/* 速览层（规格 §3.3）：仅 PRO；LITE 的信息已并入上方横幅与下方维度网格 */}
       {mode === 'pro' && (
       <div className="mt-6">
-        {(
           <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
             {/* C 位：2×2 放大 */}
             <motion.div variants={riseInView} custom={0} initial="hidden" whileInView="show" viewport={viewport} className="min-w-0 lg:col-span-2 lg:row-span-2">
@@ -180,29 +184,32 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
               {health ? <Card className="h-full"><CardHeader><CardTitle>AI 速览</CardTitle></CardHeader><CardContent><MissingMetric label="AI 分析所需证据" /></CardContent></Card> : <AiGlanceCard xray={xray} />}
             </motion.div>
           </div>
-        ) : (
-          /* LITE：C 位大卡 + 3 迷你卡（其余维度取前 3，关联网络不进速览层） */
-          <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
-            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-w-0 lg:col-span-2">
-              {layout.c === 'radar' ? (
-                <Card className="h-full">
-                  <CardHeader><CardTitle>{terms.cardTitles.radar}</CardTitle></CardHeader>
-                  <CardContent>{health ? <MissingEvidencePanel health={health} /> : <AttributeRadar xray={xray} height={380} />}</CardContent>
-                </Card>
-              ) : (
-                <NarrativeCard id="glance-c" k={SLOT_KEY[layout.c]} xray={xray} />
-              )}
-            </motion.div>
-            {layout.rest
-              .filter((s) => s !== 'network')
-              .slice(0, 3)
-              .map((slot, i) => (
-                <motion.div key={slot} variants={rise} custom={2 + i} initial="hidden" animate="show">
-                  {health ? <Card className="h-full"><CardHeader><CardTitle>{slotTitle(slot, terms)}</CardTitle></CardHeader><CardContent>{proCharts[slot]}</CardContent></Card> : <MiniDimCard id={`glance-${slot}`} k={SLOT_KEY[slot]} xray={xray} />}
-                </motion.div>
-              ))}
-          </div>
-        )}
+      </div>
+      )}
+
+      {/* LITE 速览层 */}
+      {mode === 'lite' && (
+      <div className="mt-6">
+        <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
+          <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-w-0 lg:col-span-2">
+            {layout.c === 'radar' ? (
+              <Card className="h-full">
+                <CardHeader><CardTitle>{terms.cardTitles.radar}</CardTitle></CardHeader>
+                <CardContent>{health ? <MissingEvidencePanel health={health} /> : <AttributeRadar xray={xray} height={380} />}</CardContent>
+              </Card>
+            ) : (
+              <NarrativeCard id="glance-c" k={SLOT_KEY[layout.c]} xray={xray} />
+            )}
+          </motion.div>
+          {layout.rest
+            .filter((s) => s !== 'network')
+            .slice(0, 3)
+            .map((slot, i) => (
+              <motion.div key={slot} variants={rise} custom={2 + i} initial="hidden" animate="show">
+                {health ? <Card className="h-full"><CardHeader><CardTitle>{slotTitle(slot, terms)}</CardTitle></CardHeader><CardContent>{proCharts[slot]}</CardContent></Card> : <MiniDimCard id={`glance-${slot}`} k={SLOT_KEY[slot]} xray={xray} />}
+              </motion.div>
+            ))}
+        </div>
       </div>
       )}
 
@@ -219,7 +226,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
             <div className="min-w-0 space-y-6">
               {order.map((id) => (
                 <SectionShell key={id} id={id} title={terms.sections[id]}>
-                  <SectionBody id={id} xray={xray} health={health} />
+                  <SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} />
                 </SectionShell>
               ))}
             </div>
@@ -228,10 +235,10 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
           <div className="grid gap-6 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
             {order.map((id) => {
               const k = LITE_SECTION_KEY[id]
-              return k ? health ? <SectionShell key={id} id={`detail-${id}`} title={terms.sections[id]}><SectionBody id={id} xray={xray} health={health} /></SectionShell> : <NarrativeCard key={id} id={`detail-${id}`} k={k} xray={xray} /> : null
+              return k ? health ? <SectionShell key={id} id={`detail-${id}`} title={terms.sections[id]}><SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} /></SectionShell> : <NarrativeCard key={id} id={`detail-${id}`} k={k} xray={xray} /> : null
             })}
           </div>
-        </div>
+        )}
       </div>
       )}
 
@@ -247,7 +254,14 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
 }
 
 /** PRO section 内容（顺序由 detailOrder 版式传导） */
-function SectionBody({ id, xray, health }: { id: DetailSectionId; xray: CompanyXRay; health?: CompanyHealth }) {
+function SectionBody({ id, xray, health, sentiment, sentimentLoading, sentimentSlow }: {
+  id: DetailSectionId
+  xray: CompanyXRay
+  health?: CompanyHealth
+  sentiment?: SentimentSnapshot
+  sentimentLoading: boolean
+  sentimentSlow: boolean
+}) {
   if (health && id === 'evidence') return <MissingEvidencePanel health={health} />
   if (health && id === 'financial') return health.years.length ? <FinancialSection xray={xray} health={health} /> : <MissingMetric label="该企业的完整年度财务报表" />
   if (health && id === 'equity') return <MissingMetric label="该企业的完整股权结构与控制关系" />

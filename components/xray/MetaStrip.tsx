@@ -15,8 +15,6 @@ import { useTencentQuote } from '@/lib/hooks/use-tencent-quote'
 import { useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
-import type { CompanyHealth } from '@/lib/company'
-import { listingLabels } from '@/lib/company'
 
 const RISK_META = {
   green: { label: '低风险', en: 'CLEAN', Icon: ShieldCheck },
@@ -77,13 +75,13 @@ export function MetaStrip({ xray }: { xray: CompanyXRay }) {
   const terms = getTerms('pro')
   const color = t.riskColor[xray.overallRisk]
   const r = xray.registry
-  const quote = useTencentQuote(health ? undefined : xray.stockCode)
+  const quote = useTencentQuote(xray.stockCode)
   const quoteColor = quote && quote.change > 0 ? t.colors.danger : quote && quote.change < 0 ? t.colors.safe : t.colors.textDim
 
   /** 左侧标签等宽加粗，值直接展示——微步"文件大小 / 文件类型"式 */
   const kv: { k: string; v: React.ReactNode }[] = [
     { k: '所属行业', v: xray.industry },
-    ...(r ? [{ k: terms.metaStrip.foundedAt, v: r.foundedAt }] : health?.company.foundedAt ? [{ k: terms.metaStrip.foundedAt, v: health.company.foundedAt }] : []),
+    ...(r ? [{ k: terms.metaStrip.foundedAt, v: r.foundedAt }] : []),
     ...(r ? [{ k: terms.metaStrip.registeredCapital, v: formatWan(r.registeredCapital) }] : []),
     { k: '风险评分', v: (
       <>
@@ -223,7 +221,7 @@ export function MetaStrip({ xray }: { xray: CompanyXRay }) {
               <DataSourceBadge sources={xray.sources ?? []} />
             </div>
           </div>
-        </div>}
+        </div>
       </div>
 
       {/* 底部横排操作按钮（微步式，无边框分隔线） */}
