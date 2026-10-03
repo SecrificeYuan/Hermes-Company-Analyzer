@@ -8,11 +8,15 @@ function thread(id: string, at = 0): ChatThread {
 describe('lib/chat-history', () => {
   beforeEach(() => { window.localStorage.clear() })
 
-  it('空存储返回 []；新增后按 at 新→旧排序，上限 3 条', () => {
+  it('空存储返回 []；新增后按 at 新→旧排序，上限 MAX_THREADS(50) 条', () => {
     expect(getChatThreads()).toEqual([])
-    addChatThread(thread('a', 1)); addChatThread(thread('b', 2))
-    addChatThread(thread('c', 3)); addChatThread(thread('d', 4))
-    expect(getChatThreads().map((t) => t.id)).toEqual(['d', 'c', 'b'])
+    const ids: string[] = []
+    for (let i = 1; i <= 51; i++) {
+      const id = `t${i}`
+      addChatThread(thread(id, i))
+      ids.unshift(id)
+    }
+    expect(getChatThreads().map((t) => t.id)).toEqual(ids.slice(0, 50))
   })
 
   it('同 id 覆盖更新且置顶', () => {

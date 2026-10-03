@@ -27,7 +27,7 @@ export interface ChatThread {
 
 const STORAGE_KEY = 'hermes-chat-threads'
 const CLIENT_ID_KEY = 'hermes-client-id'
-const MAX_THREADS = 3
+const MAX_THREADS = 50
 
 /**
  * 匿名客户端 ID（方案 A 的唯一凭证）：首次生成 UUID 存 localStorage，此后所有请求携带。

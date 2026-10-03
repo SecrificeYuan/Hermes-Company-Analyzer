@@ -104,7 +104,12 @@ export function ChatWindow({
           ? { role: 'tool', content: m.label, name: m.name }
           : { role: 'card', content: JSON.stringify(m.card) },
     )
-    const updated: ChatThread = { ...thread, at: Date.now(), messages }
+    // 「新建对话」开出的空线程：首条用户消息发送后用它补标题
+    const firstUser = messages.find((m) => m.role === 'user' && m.content)
+    const title = thread.title === '新对话' && firstUser?.content
+      ? firstUser.content.slice(0, 24)
+      : thread.title
+    const updated: ChatThread = { ...thread, title, at: Date.now(), messages }
     addChatThread(updated)
     onThreadUpdate(updated)
   }
@@ -306,7 +311,11 @@ export function ChatWindow({
     setInput('')
     const outgoing = pendingAttachments
     setPendingAttachments([])
-    updateMsgs((prev) => [...prev, { role: 'user', text: q, attachments: outgoing.length ? outgoing : undefined }])
+    // 同步推 ref 再 setState：setMsgs 的 updater 在下次 render 才执行，而 runTurn 内的
+    // allAttachments() 立即读 msgsRef——异步推会让本轮刚发的附件丢失（AI 看不到附件的 bug）
+    const next: UiMsg[] = [...msgsRef.current, { role: 'user', text: q, attachments: outgoing.length ? outgoing : undefined }]
+    msgsRef.current = next
+    setMsgs(next)
     await runTurn([...llmHistory(), { role: 'user', content: q }])
   }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageSquare, Send } from 'lucide-react'
+import { MessageSquare, Send, Sparkles } from 'lucide-react'
 import { addChatThread, getChatThreads, type ChatThread } from '@/lib/chat-history'
 
 const EXAMPLES = ['我妈要买理财', '我想购买 XXX 股票', '帮我看看 XX 健身']
@@ -63,6 +63,15 @@ export function ChatEntry({ available }: { available: boolean }) {
       {!available && (
         <p className="mt-3 font-mono text-[11px] text-slate-500">AI 功能未配置（缺少 LLM 环境变量）</p>
       )}
+
+      <button
+        type="button"
+        onClick={() => router.push('/chat')}
+        className="mt-4 flex items-center gap-2 rounded-full border border-ink-edge/60 bg-ink-card/40 px-4 py-1.5 text-xs text-slate-300 transition-colors hover:border-neon/60 hover:text-slate-100"
+      >
+        <Sparkles className="h-3.5 w-3.5 text-neon" />
+        与 AI 聊聊
+      </button>
 
       {threads.length > 0 && (
         <div className="mt-6 flex w-full flex-wrap items-center justify-center gap-2">

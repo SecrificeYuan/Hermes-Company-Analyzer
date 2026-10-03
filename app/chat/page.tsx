@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, MessageSquare, Trash2 } from 'lucide-react'
+import { ArrowLeft, MessageSquare, PenSquare, Trash2 } from 'lucide-react'
 import { deleteChatThread, hydrateChatThreads, addChatThread, type ChatThread } from '@/lib/chat-history'
 import { ChatWindow } from '@/components/chat/ChatWindow'
 
@@ -40,7 +40,19 @@ function ChatPageInner() {
     void hydrateChatThreads().then((merged) => {
       if (cancelled) return
       setThreads(merged)
-      if (!threadId) return
+      // 裸开 /chat（无参数）：有历史就落到最近一条，没有就开一条新对话，避免白屏
+      if (!threadId) {
+        if (company || reportId) return // 交给下方 boot effect 开新线程
+        const target = merged[0] ?? {
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `t-${Date.now()}`,
+          title: '新对话',
+          at: Date.now(),
+          messages: [],
+        }
+        if (!merged[0]) setThreads(addChatThread(target))
+        router.replace(`/chat?thread=${target.id}`)
+        return
+      }
       const found = merged.find((t) => t.id === threadId)
       if (!found) {
         router.replace('/')
@@ -91,6 +103,18 @@ function ChatPageInner() {
     router.replace(`/chat?thread=${fresh.id}&report=${encodeURIComponent(reportId)}`)
   }, [reportId, threadId, router])
 
+  /** 新建对话：开一条空消息线程并切入；首条消息发送后 ChatWindow 会补标题 */
+  function createThread() {
+    const fresh: ChatThread = {
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `t-${Date.now()}`,
+      title: '新对话',
+      at: Date.now(),
+      messages: [],
+    }
+    setThreads(addChatThread(fresh))
+    router.push(`/chat?thread=${fresh.id}`)
+  }
+
   /** 两步删除：第一次点击进入「确认？」，3s 内再点才真正删 */
   function requestDelete(id: string) {
     if (confirmId === id) {
@@ -118,13 +142,23 @@ function ChatPageInner() {
       <aside className="hidden w-64 shrink-0 flex-col border-r border-ink-edge md:flex">
         <div className="flex items-center justify-between border-b border-ink-edge px-4 py-3">
           <span className="font-mono text-[10px] tracking-[0.25em] text-slate-500">对话列表</span>
-          <Link
-            href="/"
-            className="flex items-center gap-1 font-mono text-[10px] text-slate-400 transition-colors hover:text-neon"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            首页
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={createThread}
+              className="flex items-center gap-1 font-mono text-[10px] text-slate-400 transition-colors hover:text-neon"
+            >
+              <PenSquare className="h-3 w-3" />
+              新建对话
+            </button>
+            <Link
+              href="/"
+              className="flex items-center gap-1 font-mono text-[10px] text-slate-400 transition-colors hover:text-neon"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              首页
+            </Link>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto py-2">
           {threads.length === 0 && (
@@ -176,7 +210,15 @@ function ChatPageInner() {
           </Link>
           <span className="font-mono text-xs tracking-[0.25em] text-slate-400">HERMES · 对话</span>
         </header>
-        <ChatWindow key={thread.id} thread={thread} onThreadUpdate={setThread} reportId={reportId} />
+        <ChatWindow
+          key={thread.id}
+          thread={thread}
+          onThreadUpdate={(updated) => {
+            setThread(updated)
+            setThreads((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+          }}
+          reportId={reportId}
+        />
       </section>
     </main>
   )
