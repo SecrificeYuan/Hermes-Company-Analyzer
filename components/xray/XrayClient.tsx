@@ -1,21 +1,24 @@
 'use client'
 
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, GitCompareArrows } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AttributeRadar } from './AttributeRadar'
 import { CashFlowChart } from './CashFlowChart'
-import { CharacterCard } from './CharacterCard'
+import { CharacterPanel } from './CharacterPanel'
 import { EvidenceDrawer } from './EvidenceDrawer'
+import { HiddenStatusList } from './HiddenStatusList'
 import { LawsuitHeatmap } from './LawsuitHeatmap'
+import { LightBanner } from './LightBanner'
 import { NarrativeCard } from './NarrativeCard'
 import { RelationGraph } from './RelationGraph'
 import { SentimentCurve } from './SentimentCurve'
 import { AnchorNav } from './AnchorNav'
 import { MetaStrip } from './MetaStrip'
+import { NextStepsCard } from './NextStepsCard'
 import { MarketZone } from './market/MarketZone'
 import { SectionShell } from './detail/SectionShell'
 import { FinancialSection } from './detail/FinancialSection'
@@ -24,9 +27,9 @@ import { LegalSection } from './detail/LegalSection'
 import { SentimentSection } from './detail/SentimentSection'
 import { NetworkSection } from './detail/NetworkSection'
 import { EvidenceSection } from './detail/EvidenceSection'
-import { AiSection } from './detail/AiSection'
 import { ShareCard } from '@/components/share/ShareCard'
 import { AiGlanceCard } from './AiGlanceCard'
+import { AiInsightCard } from './AiInsightCard'
 import { useSentiment } from './useSentiment'
 import { detailOrder, glanceLayout, narrativeOf } from '@/lib/narrative'
 import type { DetailSectionId, GlanceSlot } from '@/lib/narrative'
@@ -72,6 +75,8 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
   const mode = useMode()
   const terms = getTerms(mode)
   const { snapshot: sentiment, loading: sentimentLoading, slow: sentimentSlow } = useSentiment(xray.id)
+  // AI 点评卡生成完 summary 后回填速览层（AiGlanceCard 替换"待生成"占位）
+  const [aiSummary, setAiSummary] = useState<string | null>(null)
   // 只在舆情请求成功后覆盖该切片；综合风险与其余已完成模块保持首次结果，
   // 避免慢源返回时造成报告版式和主结论跳变。
   const displayXray: CompanyXRay = sentiment?.status === 'available' && sentiment.morale
@@ -97,42 +102,71 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
 
   return (
     <main className={`mx-auto max-w-7xl px-6 py-8 ${mode === 'lite' ? 'flex h-[calc(100vh-2.25rem)] flex-col overflow-hidden' : 'min-h-screen'}`}>
-      {/* 顶栏（仅 LITE；PRO 的操作已并入概要头右侧操作列） */}
+      {/* LITE：顶栏 → 灯区 → 两列内滚（左面板 / 右 debuff+叙事卡） */}
       {mode === 'lite' && (
-      <div className="mb-6 flex shrink-0 items-center justify-between">
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/"><ArrowLeft /> 重新扫描</Link>
-        </Button>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/compare"><GitCompareArrows /> 双公司对比</Link>
-          </Button>
-          {!health && <ShareCard xray={xray} />}
-        </div>
-      </div>
+        <>
+          <div className="mb-4 flex shrink-0 items-center justify-between">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/"><ArrowLeft /> 重新扫描</Link>
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button asChild variant="ghost" size="sm">
+                <Link href={xray.stockCode ? `/compare?a=${xray.stockCode}` : '/compare'}><GitCompareArrows /> 双公司对比</Link>
+              </Button>
+              {!health && <ShareCard xray={xray} />}
+            </div>
+          </div>
+          <motion.div variants={rise} custom={0} initial="hidden" animate="show">
+            <LightBanner xray={displayXray} />
+          </motion.div>
+          {/* 单行高度钳进剩余空间（minmax(0,1fr)），两列 stretch 后各自内滚；auto 行会被内容撑破一屏约束 */}
+          <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)]">
+            <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-h-0 min-w-0 lg:overflow-y-auto">
+              <CharacterPanel xray={displayXray} health={health} />
+              <motion.div variants={riseInView} custom={2} initial="hidden" whileInView="show" viewport={viewport} className="mt-6">
+                <AiInsightCard reportId={xray.id} companyName={displayXray.name} nextSteps={displayXray.nextSteps} />
+              </motion.div>
+            </motion.div>
+            <div className="min-h-0 min-w-0 space-y-4 overflow-y-auto pr-1">
+              {displayXray.hiddenStatus.length >= 3 && (
+                <div className="rounded-btn border border-danger/50 bg-danger/10 px-3 py-2 text-xs text-danger">
+                  ⚠ 多重负面状态叠加，情况危险
+                </div>
+              )}
+              <div>
+                <div className="mb-2.5 flex items-center justify-between font-mono text-[11px] tracking-[0.25em] text-slate-500">
+                  {terms.hiddenTitle}
+                  <span className="text-grape">×{displayXray.hiddenStatus.length}</span>
+                </div>
+                <div className="max-h-72 overflow-y-auto pr-1">
+                  <HiddenStatusList items={displayXray.hiddenStatus} />
+                </div>
+              </div>
+              {order.map((id, i) => {
+                const k = LITE_SECTION_KEY[id]
+                return k ? (
+                  <motion.div key={id} variants={rise} custom={2 + i} initial="hidden" animate="show">
+                    <NarrativeCard id={`detail-${id}`} k={k} xray={displayXray} compact />
+                  </motion.div>
+                ) : null
+              })}
+            </div>
+          </div>
+        </>
       )}
 
       {/* 头：PRO 元信息条；LITE 角色横幅 + 右侧五维紧凑卡竖列 */}
-      {mode === 'pro' ? (
+      {mode === 'pro' && (
         <motion.div variants={rise} custom={0} initial="hidden" animate="show">
           <MetaStrip xray={displayXray} health={health} />
         </motion.div>
-      ) : (
-        <div className="grid min-h-0 flex-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)] lg:grid-rows-[minmax(0,1fr)]">
-          <motion.div variants={rise} custom={0} initial="hidden" animate="show" className="min-h-0 min-w-0 lg:overflow-y-auto">
-            <CharacterCard xray={displayXray} health={health} />
-          </motion.div>
-          <div className="min-h-0 min-w-0 space-y-4 overflow-y-auto pr-1">
-            {order.map((id, i) => {
-              const k = LITE_SECTION_KEY[id]
-              return k ? (
-                <motion.div key={id} variants={rise} custom={1 + i} initial="hidden" animate="show">
-                  <NarrativeCard id={`detail-${id}`} k={k} xray={displayXray} compact />
-                </motion.div>
-              ) : null
-            })}
-          </div>
-        </div>
+      )}
+
+      {/* 下一步行动建议（LLM 成功时存在；失败整块隐藏，不显示占位） */}
+      {mode === 'pro' && displayXray.nextSteps && (
+        <motion.div variants={riseInView} custom={1} initial="hidden" whileInView="show" viewport={viewport} className="mt-6">
+          <NextStepsCard nextSteps={displayXray.nextSteps} />
+        </motion.div>
       )}
 
       {/* 行情与资金区（PRO 专属；资料缺口主体不展示行情） */}
@@ -179,7 +213,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
             <motion.div variants={riseInView} custom={1 + layout.rest.length} initial="hidden" whileInView="show" viewport={viewport} className="h-full">
               {health
                 ? <Card className="h-full"><CardHeader><CardTitle>AI 速览</CardTitle></CardHeader><CardContent><MissingMetric label="AI 分析所需证据" /></CardContent></Card>
-                : <AiGlanceCard xray={displayXray} />}
+                : <AiGlanceCard xray={displayXray} liveSummary={aiSummary} />}
             </motion.div>
           </div>
         )}
@@ -197,7 +231,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
             {order.map((id, i) => (
             <motion.div key={id} variants={riseInView} custom={i} initial="hidden" whileInView="show" viewport={viewport}>
               <SectionShell id={id} index={i + 1} title={terms.sections[id]}>
-                <SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} />
+                <SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} onAiSummary={setAiSummary} />
               </SectionShell>
             </motion.div>
             ))}
@@ -223,6 +257,7 @@ function SectionBody({
   sentiment,
   sentimentLoading,
   sentimentSlow,
+  onAiSummary,
 }: {
   id: DetailSectionId
   xray: CompanyXRay
@@ -230,6 +265,7 @@ function SectionBody({
   sentiment?: import('@/lib/types').SentimentSnapshot
   sentimentLoading: boolean
   sentimentSlow: boolean
+  onAiSummary?: (summary: string) => void
 }) {
   if (health && id === 'evidence') return <MissingEvidencePanel health={health} />
   if (health && id === 'financial') return health.years.length ? <FinancialSection xray={xray} health={health} /> : <MissingMetric label="该企业的完整年度财务报表" />
@@ -245,7 +281,7 @@ function SectionBody({
     case 'sentiment': return <SentimentSection xray={xray} snapshot={sentiment} loading={sentimentLoading} slow={sentimentSlow} />
     case 'network': return <NetworkSection xray={xray} />
     case 'evidence': return <EvidenceSection xray={xray} />
-    case 'ai': return <AiSection />
+    case 'ai': return <AiInsightCard reportId={xray.id} companyName={xray.name} onSummary={onAiSummary} />
   }
 }
 

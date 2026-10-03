@@ -46,7 +46,7 @@ export function HealthBar({ hp }: { hp: CompanyXRay['hp'] }) {
           经营现金流 <span className={hp.cashFlow < 0 ? 'text-danger' : 'text-safe'}>{formatWan(hp.cashFlow)}</span>
         </div>
         <div className="text-right">
-          资产负债率 <span className={hp.debtRatio > 70 ? 'text-danger' : 'text-slate-200'}>{hp.debtRatio}%</span>
+          欠债是资产的 <span className={hp.debtRatio > 70 ? 'text-danger' : 'text-slate-200'}>{hp.debtRatio}%</span>
         </div>
       </div>
     </div>

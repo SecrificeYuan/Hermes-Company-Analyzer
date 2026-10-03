@@ -32,3 +32,6 @@ next-env.d.ts
 
 # 项目打包文件，勿提交
 *.zip
+
+# AI 点评 SQLite 缓存（可再生成）
+/data/report-ai.db*

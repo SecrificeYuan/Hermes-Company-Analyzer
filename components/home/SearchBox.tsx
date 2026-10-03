@@ -148,6 +148,12 @@ export function SearchBox({ onPick }: { onPick: (company: ListedCompany) => void
           SCAN ⏎
         </button>
       </div>
+      <a
+        href="/compare"
+        className="mt-2 inline-block pl-1 font-mono text-xs text-slate-500 transition-colors hover:text-neon"
+      >
+        去比较 -&gt;
+      </a>
 
       {open && menuPos &&
         createPortal(

@@ -6,6 +6,7 @@ import { pledgeAdapter } from './adapters/pledge'
 import { holdersAdapter } from './adapters/holders'
 import { profileAdapter } from './adapters/profile'
 import { resolveCompany } from './eastmoney'
+import { fetchMockCompany, isMockCompany } from './adapters/mock'
 import { cacheGet, cacheSet } from './cache'
 
 // 舆情走独立的客户端异步接口。不能让新闻源的限流或慢响应阻塞报告主体。
@@ -52,6 +53,11 @@ function normalize(data: RawCompanyData): RawCompanyData {
 
 /** Returns only verified live slices. A failed source never becomes a zero-valued record. */
 export async function fetchRawCompany(input: string): Promise<RawCompanyData> {
+  // mock 主体（mock-healthy/warning/danger）：离线演示生命线，直接出注册表快照
+  if (isMockCompany(input)) {
+    const mock = await fetchMockCompany(input)
+    if (mock) return normalize(mock)
+  }
   const company = await resolveCompany(input)
   if (!company) throw new CompanyNotFoundError(input)
   const cached = cacheGet(company.id)

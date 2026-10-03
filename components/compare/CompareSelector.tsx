@@ -1,14 +1,16 @@
 // components/compare/CompareSelector.tsx
 'use client'
 
-import { Check, GitCompareArrows, Link2, Swords, X } from 'lucide-react'
+import { Check, GitCompareArrows, Link2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CompanySearchInput } from '@/components/search/CompanySearchInput'
-import type { ListedCompany } from '@/lib/data/eastmoney'
 import { useMode } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 
 type Slot = 'A' | 'B'
+
+/** 宽松选择形状：上市公司（sub=股票代码）与快照主体（sub=身份标签）共用 */
+export type SlotPick = { id: string; name: string; sub?: string }
 
 export function CompareSelector({
   value,
@@ -20,8 +22,8 @@ export function CompareSelector({
   copied,
   onCopy,
 }: {
-  value: Record<Slot, ListedCompany | null>
-  onChange: (slot: Slot, company: ListedCompany | null) => void
+  value: Record<Slot, SlotPick | null>
+  onChange: (slot: Slot, pick: SlotPick | null) => void
   onRun: () => void
   loading: boolean
   sameCompany: boolean
@@ -43,7 +45,7 @@ export function CompareSelector({
             {picked ? (
               <div className="flex items-center gap-3 rounded-btn border border-neon/30 bg-ink-card px-3 py-2">
                 <span className="text-sm font-semibold text-slate-100">{picked.name}</span>
-                <span className="font-mono text-xs text-slate-500">{picked.stockCode}</span>
+                <span className="font-mono text-xs text-slate-500">{picked.sub ?? ''}</span>
                 <button
                   type="button"
                   aria-label={`重选公司 ${slot}`}
@@ -58,14 +60,14 @@ export function CompareSelector({
               <CompanySearchInput
                 placeholder="搜公司名称或代码…"
                 disabled={loading}
-                onPick={(company) => onChange(slot, company)}
+                onPick={(company) => onChange(slot, { id: company.id, name: company.name, sub: company.stockCode })}
               />
             )}
           </label>
         )
       })}
       <Button onClick={onRun} disabled={loading || sameCompany || !bothPicked} size="lg">
-        {mode === 'pro' ? <GitCompareArrows /> : <Swords />}
+        <GitCompareArrows />
         {loading ? terms.actionLoading : terms.action}
       </Button>
       {canCopy && (

@@ -60,7 +60,7 @@ export function narrativeCopy(key: NarrativeKey, x: CompanyXRay): NarrativeCopy 
       const negative = x.morale.avgTone < 0
       return {
         big: `${x.morale.avgTone}`,
-        caption: '舆论温度（-10 ~ +10）',
+        caption: '口碑温度（-10 ~ +10）',
         text: ai ?? (negative
           ? `网上骂声一片，舆论温度跌到 ${x.morale.avgTone}。员工、供应商和客户都在观望。`
           : `网上风评不错，舆论温度 ${x.morale.avgTone}。`),

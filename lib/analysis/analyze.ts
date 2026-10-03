@@ -8,6 +8,7 @@ import { detectHiddenStatus } from './debuff/rules'
 import { buildTimeline } from './timeline'
 import { buildGraph } from './graph'
 import { buildVerdict } from './verdict'
+import { deriveLight } from './light'
 
 const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v))
 
@@ -66,6 +67,7 @@ export function analyze(raw: RawCompanyData, asOf = new Date(raw.meta.fetchedAt)
     graph: buildGraph(raw, riskScore),
     verdict,
     advice,
+    light: deriveLight({ overallRisk, hiddenStatus, coverage: 'full' }),
     registry: raw.meta.registry,
     llm: raw.llm,
     sources: raw.meta.sources,

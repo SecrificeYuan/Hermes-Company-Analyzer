@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { History } from 'lucide-react'
@@ -8,6 +8,7 @@ import { NetworkBg } from '@/components/home/NetworkBg'
 import { FlashMarquee } from '@/components/home/FlashMarquee'
 import { FilterPanel } from '@/components/home/FilterPanel'
 import { SearchBox } from '@/components/home/SearchBox'
+import { ChatEntry } from '@/components/home/ChatEntry'
 import { ScanBeam } from '@/components/scan/ScanBeam'
 import { ScanProgress } from '@/components/scan/ScanProgress'
 import { addSearchHistory, getSearchHistory, type SearchRecord } from '@/lib/search-history'
@@ -17,7 +18,15 @@ export default function HomePage() {
   const router = useRouter()
   const [history, setHistory] = useState<SearchRecord[]>(() => getSearchHistory())
   const [scanning, setScanning] = useState<{ id: string; name: string } | null>(null)
-  const [queryMode, setQueryMode] = useState<'search' | 'filter'>('search')
+  const [queryMode, setQueryMode] = useState<'search' | 'filter' | 'chat'>('search')
+  const [llmOk, setLlmOk] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/llm-status')
+      .then((res) => res.json())
+      .then((data: { available?: boolean }) => setLlmOk(data.available === true))
+      .catch(() => setLlmOk(false))
+  }, [])
 
   const handlePick = (company: ListedCompany) => {
     if (scanning) return
@@ -52,7 +61,7 @@ export default function HomePage() {
             HERMES SYSTEM ONLINE
           </div>
           <h1 className="text-5xl font-bold tracking-tight text-slate-50">公司透视</h1>
-          <div role="group" aria-label="查询方式" className="mx-auto mt-6 inline-grid grid-cols-2 rounded-btn border border-ink-edge bg-ink-card p-1">
+          <div role="group" aria-label="查询方式" className="mx-auto mt-6 inline-grid grid-cols-3 rounded-btn border border-ink-edge bg-ink-card p-1">
             <button
               type="button"
               aria-pressed={queryMode === 'search'}
@@ -68,6 +77,14 @@ export default function HomePage() {
               className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${queryMode === 'filter' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
             >
               筛选
+            </button>
+            <button
+              type="button"
+              aria-pressed={queryMode === 'chat'}
+              onClick={() => setQueryMode('chat')}
+              className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${queryMode === 'chat' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
+            >
+              对话
             </button>
           </div>
           {queryMode === 'search' && (
@@ -85,6 +102,15 @@ export default function HomePage() {
             className="mb-10 flex w-full justify-center"
           >
             <FilterPanel />
+          </motion.div>
+        ) : queryMode === 'chat' ? (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="flex w-full justify-center"
+          >
+            <ChatEntry available={llmOk} />
           </motion.div>
         ) : (
         <>
