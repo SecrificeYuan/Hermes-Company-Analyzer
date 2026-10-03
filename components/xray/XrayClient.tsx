@@ -117,7 +117,8 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
           <motion.div variants={rise} custom={0} initial="hidden" animate="show">
             <LightBanner xray={displayXray} />
           </motion.div>
-          <div className="grid min-h-0 flex-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)]">
+          {/* 单行高度钳进剩余空间（minmax(0,1fr)），两列 stretch 后各自内滚；auto 行会被内容撑破一屏约束 */}
+          <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,350px)]">
             <motion.div variants={rise} custom={1} initial="hidden" animate="show" className="min-h-0 min-w-0 lg:overflow-y-auto">
               <CharacterPanel xray={displayXray} health={health} />
               {displayXray.nextSteps && (

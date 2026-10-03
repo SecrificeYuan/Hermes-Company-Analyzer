@@ -4,6 +4,7 @@ import { getXRay } from '@/lib/get-xray'
 import { CompanyNotFoundError } from '@/lib/data/fetcher'
 import { findCompany, getCompanyHealth } from '@/lib/data/company-health'
 import { healthToXray } from '@/lib/data/health-xray'
+import { isMockCompany } from '@/lib/data/adapters/mock'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +16,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
   const { id } = await params
   // Keep the established X-ray report as the primary company presentation.
   // The health report remains available for discovered, unlisted companies.
-  if (/^\d{6}$/.test(id)) {
+  if (/^\d{6}$/.test(id) || isMockCompany(id)) {
     try {
       return <XrayClient xray={await getXRay(id)} />
     } catch (error) {
