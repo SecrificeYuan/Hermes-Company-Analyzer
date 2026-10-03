@@ -140,6 +140,12 @@ export function xrayFactPayload(xray: CompanyXRay) {
     riskScore: xray.riskScore,
     verdict: xray.verdict,
     asOf: xray.asOf,
+    debuffItems: (xray.hiddenStatus ?? []).map((h) => ({
+      id: h.id,
+      label: h.label,
+      severity: h.severity,
+      description: h.description,
+    })),
     五维事实: buildFactPayload(xray),
     命中信号: buildSignalPayload(xray),
     nextSteps: xray.nextSteps?.items ?? null,

@@ -14,7 +14,7 @@ function validClientId(v: unknown): v is string {
 }
 
 interface IncomingMessage {
-  role: 'user' | 'assistant' | 'tool'
+  role: 'user' | 'assistant' | 'tool' | 'card'
   content: string | null
 }
 
@@ -28,7 +28,7 @@ interface IncomingThread {
 function isMessage(value: unknown): value is IncomingMessage {
   if (typeof value !== 'object' || value === null) return false
   const m = value as Record<string, unknown>
-  return (m.role === 'user' || m.role === 'assistant' || m.role === 'tool') &&
+  return (m.role === 'user' || m.role === 'assistant' || m.role === 'tool' || m.role === 'card') &&
     (typeof m.content === 'string' || m.content === null)
 }
 

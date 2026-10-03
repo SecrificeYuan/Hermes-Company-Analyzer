@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { MessageSquare, RotateCcw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -24,11 +24,18 @@ export function AiInsightCard({
   companyName,
   nextSteps,
   onSummary,
+  onSummaryDelta,
+  onMeta,
 }: {
   reportId: string
   companyName: string
   nextSteps?: CompanyXRay['nextSteps']
+  /** summary 完整落地回调（兼容旧签名） */
   onSummary?: (summary: string) => void
+  /** summary 流式增量回调（text 为当前累计全文；供 PRO 速览层 AiGlanceCard 边生成边预览） */
+  onSummaryDelta?: (text: string) => void
+  /** 生成元信息到达回调（model + generatedAt） */
+  onMeta?: (meta: { model: string; generatedAt: string }) => void
 }) {
   const mode = useMode()
   const terms = getTerms(mode)
@@ -47,10 +54,19 @@ export function AiInsightCard({
     if (slot === 'summary') onSummary?.(text)
   }, [onSummary])
 
+  const handleSlotDelta = useCallback((slot: string, text: string) => {
+    if (slot === 'summary') onSummaryDelta?.(text)
+  }, [onSummaryDelta])
+
   const { llmUp, failed, meta, display, valueOf, regenerate, regenerating } = useLlmFieldStream(
     `/api/report-ai?reportId=${encodeURIComponent(reportId)}`,
-    { expand, onSlotDone: handleSlotDone },
+    { expand, onSlotDone: handleSlotDone, onSlotDelta: handleSlotDelta },
   )
+
+  // meta 随 done 事件到达；同步给速览层显示真实模型/生成时间
+  useEffect(() => {
+    if (meta) onMeta?.(meta)
+  }, [meta, onMeta])
 
   const summaryVal = valueOf('summary')
   const lightVal = valueOf('lightReason')

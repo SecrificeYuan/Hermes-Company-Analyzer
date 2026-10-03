@@ -64,6 +64,15 @@ export function ChatWindow({
   const [busy, setBusy] = useState(false)
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const [confirmIdx, setConfirmIdx] = useState<number | null>(null)
+  /** msgs 的命令式镜像：回合结束 finally 里 state 尚未重渲染，必须靠它拿到含 tool/card 的完整序列再落库 */
+  const msgsRef = useRef<UiMsg[]>(msgs)
+  const updateMsgs = (fn: (prev: UiMsg[]) => UiMsg[]) => {
+    setMsgs((prev) => {
+      const next = fn(prev)
+      msgsRef.current = next
+      return next
+    })
+  }
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const confirmTimer = useRef<number | null>(null)
@@ -138,7 +147,7 @@ export function ChatWindow({
     let aiText = ''
 
     const fail = (msg: string) => {
-      setMsgs((prev) => [...prev, { role: 'assistant', text: msg }])
+      updateMsgs((prev) => [...prev, { role: 'assistant', text: msg }])
     }
 
     try {
@@ -161,7 +170,7 @@ export function ChatWindow({
       }
 
       // 预置一个等待中的 AI 气泡
-      setMsgs((prev) => {
+      updateMsgs((prev) => {
         pendingAiRef.current = prev.length
         return [...prev, { role: 'assistant', text: '' }]
       })
@@ -173,7 +182,7 @@ export function ChatWindow({
 
       const appendToAi = (delta: string) => {
         aiText += delta
-        setMsgs((prev) => {
+        updateMsgs((prev) => {
           const idx = pendingAiRef.current
           if (idx >= 0 && idx < prev.length && prev[idx].role === 'assistant') {
             const next = [...prev]
@@ -191,7 +200,7 @@ export function ChatWindow({
         const idx = pendingAiRef.current
         pendingAiRef.current = -1
         if (idx < 0) return
-        setMsgs((prev) => {
+        updateMsgs((prev) => {
           if (idx >= prev.length || prev[idx].role !== 'assistant') {
             if (mode === 'fallback' && !sawCard) return [...prev, { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }]
             return prev
@@ -225,7 +234,7 @@ export function ChatWindow({
             appendToAi(ev.text)
           } else if (ev.type === 'tool_start') {
             finishAi('remove')
-            setMsgs((prev) => {
+            updateMsgs((prev) => {
               const next: UiMsg[] = [...prev, { role: 'tool', label: ev.label ?? ev.name ?? '检索工具', name: ev.name }]
               // 工具执行期间也保持尾部有「正在输出」占位（X 光约 6 秒，不能空白）
               if (pendingAiRef.current < 0) {
@@ -236,7 +245,7 @@ export function ChatWindow({
             })
           } else if (ev.type === 'tool_end') {
             // 标记最近一条未完成的工具行：停动画、变静态（占位气泡由 tool_start 续上，此处不动）
-            setMsgs((prev) => {
+            updateMsgs((prev) => {
               const next = [...prev]
               for (let i = next.length - 1; i >= 0; i--) {
                 const item = next[i]
@@ -249,7 +258,7 @@ export function ChatWindow({
             })
           } else if (ev.type === 'report_card' && ev.reportCard) {
             sawCard = true
-            setMsgs((prev) => {
+            updateMsgs((prev) => {
               const next = [...prev]
               // 工具执行期间的占位气泡在卡片上方——挪到卡片下面，口播才会流在卡片之后
               const idx = pendingAiRef.current
@@ -272,13 +281,8 @@ export function ChatWindow({
     } finally {
       busyLockRef.current = false
       setBusy(false)
-      const updated: ChatThread = {
-        ...thread,
-        at: Date.now(),
-        messages: [...apiMessages, { role: 'assistant', content: aiText || null }],
-      }
-      addChatThread(updated)
-      onThreadUpdate(updated)
+      // 落库必须含本轮的 tool 行与报告卡（apiMessages 只有 user/assistant，是送 LLM 的视图，不能拿来持久化）
+      persistMsgs(msgsRef.current)
     }
   }
 
@@ -286,7 +290,7 @@ export function ChatWindow({
     const q = text.trim()
     if (!q || busy) return
     setInput('')
-    setMsgs((prev) => [...prev, { role: 'user', text: q }])
+    updateMsgs((prev) => [...prev, { role: 'user', text: q }])
     await runTurn([...llmHistory(), { role: 'user', content: q }])
   }
 

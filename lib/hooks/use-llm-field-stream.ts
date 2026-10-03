@@ -25,6 +25,8 @@ export function useLlmFieldStream(
     expand?: (field: string, text: string) => FieldStreamItem[] | null
     /** 某 slot 完整落地时的回调（如 summary 回填速览层） */
     onSlotDone?: (slot: string, text: string) => void
+    /** 真流式 slot 的每次增量回调（text 为当前累计全文；供速览层边生成边预览） */
+    onSlotDelta?: (slot: string, text: string) => void
   },
 ): {
   llmUp: boolean | null
@@ -52,6 +54,8 @@ export function useLlmFieldStream(
   expandRef.current = options?.expand
   const onSlotDoneRef = useRef(options?.onSlotDone)
   onSlotDoneRef.current = options?.onSlotDone
+  const onSlotDeltaRef = useRef(options?.onSlotDelta)
+  onSlotDeltaRef.current = options?.onSlotDelta
 
   const regenerate = useCallback(() => {
     queueRef.current = []
@@ -142,11 +146,13 @@ export function useLlmFieldStream(
             } else if (ev.type === 'stream' && ev.field && typeof ev.delta === 'string') {
               // 真流式增量：直接推进/初始化对应 slot 的打字机（打字机即流式渲染，天然边到边显）
               receivedRef.current = true
-              setTyping((t) =>
-                t && t.slot === ev.field
+              setTyping((t) => {
+                const next = t && t.slot === ev.field
                   ? { ...t, full: t.full + ev.delta! }
-                  : { slot: ev.field!, full: ev.delta!, len: 0 },
-              )
+                  : { slot: ev.field!, full: ev.delta!, len: 0 }
+                onSlotDeltaRef.current?.(ev.field!, next.full)
+                return next
+              })
               setTick((t) => t + 1)
             } else if (ev.type === 'done') {
               doneRef.current = true

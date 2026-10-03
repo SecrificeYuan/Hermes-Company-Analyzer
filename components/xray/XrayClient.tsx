@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, type ReactNode } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, GitCompareArrows } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -75,8 +75,14 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
   const mode = useMode()
   const terms = getTerms(mode)
   const { snapshot: sentiment, loading: sentimentLoading, slow: sentimentSlow } = useSentiment(xray.id)
-  // AI 点评卡生成完 summary 后回填速览层（AiGlanceCard 替换"待生成"占位）
-  const [aiSummary, setAiSummary] = useState<string | null>(null)
+  // AI 点评卡流式生成过程中实时回填速览层（AiGlanceCard 边生成边预览，meta 到达后定格）
+  const [aiInsight, setAiInsight] = useState<{ text: string; model?: string; generatedAt?: string } | null>(null)
+  const handleSummaryDelta = useCallback((text: string) => {
+    setAiInsight((prev) => ({ text, model: prev?.model, generatedAt: prev?.generatedAt }))
+  }, [])
+  const handleInsightMeta = useCallback((meta: { model: string; generatedAt: string }) => {
+    setAiInsight((prev) => ({ text: prev?.text ?? '', model: meta.model, generatedAt: meta.generatedAt }))
+  }, [])
   // 只在舆情请求成功后覆盖该切片；综合风险与其余已完成模块保持首次结果，
   // 避免慢源返回时造成报告版式和主结论跳变。
   const displayXray: CompanyXRay = sentiment?.status === 'available' && sentiment.morale
@@ -213,7 +219,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
             <motion.div variants={riseInView} custom={1 + layout.rest.length} initial="hidden" whileInView="show" viewport={viewport} className="h-full">
               {health
                 ? <Card className="h-full"><CardHeader><CardTitle>AI 速览</CardTitle></CardHeader><CardContent><MissingMetric label="AI 分析所需证据" /></CardContent></Card>
-                : <AiGlanceCard xray={displayXray} liveSummary={aiSummary} />}
+                : <AiGlanceCard xray={displayXray} liveInsight={aiInsight} />}
             </motion.div>
           </div>
         )}
@@ -231,7 +237,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
             {order.map((id, i) => (
             <motion.div key={id} variants={riseInView} custom={i} initial="hidden" whileInView="show" viewport={viewport}>
               <SectionShell id={id} index={i + 1} title={terms.sections[id]}>
-                <SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} onAiSummary={setAiSummary} />
+                <SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} onAiSummaryDelta={handleSummaryDelta} onAiMeta={handleInsightMeta} />
               </SectionShell>
             </motion.div>
             ))}
@@ -257,7 +263,8 @@ function SectionBody({
   sentiment,
   sentimentLoading,
   sentimentSlow,
-  onAiSummary,
+  onAiSummaryDelta,
+  onAiMeta,
 }: {
   id: DetailSectionId
   xray: CompanyXRay
@@ -265,7 +272,8 @@ function SectionBody({
   sentiment?: import('@/lib/types').SentimentSnapshot
   sentimentLoading: boolean
   sentimentSlow: boolean
-  onAiSummary?: (summary: string) => void
+  onAiSummaryDelta?: (text: string) => void
+  onAiMeta?: (meta: { model: string; generatedAt: string }) => void
 }) {
   if (health && id === 'evidence') return <MissingEvidencePanel health={health} />
   if (health && id === 'financial') return health.years.length ? <FinancialSection xray={xray} health={health} /> : <MissingMetric label="该企业的完整年度财务报表" />
@@ -281,7 +289,7 @@ function SectionBody({
     case 'sentiment': return <SentimentSection xray={xray} snapshot={sentiment} loading={sentimentLoading} slow={sentimentSlow} />
     case 'network': return <NetworkSection xray={xray} />
     case 'evidence': return <EvidenceSection xray={xray} />
-    case 'ai': return <AiInsightCard reportId={xray.id} companyName={xray.name} onSummary={onAiSummary} />
+    case 'ai': return <AiInsightCard reportId={xray.id} companyName={xray.name} onSummaryDelta={onAiSummaryDelta} onMeta={onAiMeta} />
   }
 }
 
