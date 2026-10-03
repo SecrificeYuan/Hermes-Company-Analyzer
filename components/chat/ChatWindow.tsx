@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Copy, HeartPulse, Pencil, ScanLine, Search, Send, ShieldCheck, Trash2, Wrench, type LucideIcon } from 'lucide-react'
-import { addChatThread, type ChatMessage, type ChatThread } from '@/lib/chat-history'
+import { Building2, Copy, FileSearch, HeartPulse, Pencil, ScanLine, Search, Send, ShieldCheck, Trash2, Wrench, type LucideIcon } from 'lucide-react'
+import { addChatThread, type ChatAttachment, type ChatMessage, type ChatThread } from '@/lib/chat-history'
 import { ReportCard, type ReportCardData } from '@/components/chat/ReportCard'
+import { AttachmentPicker } from '@/components/chat/AttachmentPicker'
 import { Markdown } from '@/components/chat/Markdown'
 
 type UiMsg =
-  | { role: 'user'; text: string }
+  | { role: 'user'; text: string; attachments?: ChatAttachment[] }
   | { role: 'assistant'; text: string }
   | { role: 'tool'; label: string; name?: string; done?: boolean }
   | { role: 'card'; card: ReportCardData }
@@ -47,7 +48,11 @@ export function ChatWindow({
   const [msgs, setMsgs] = useState<UiMsg[]>(() =>
     thread.messages
       .map((m): UiMsg | null => {
-        if (m.role === 'user' || m.role === 'assistant') return { role: m.role, text: m.content ?? '' }
+        if (m.role === 'user' || m.role === 'assistant') {
+          return m.role === 'user'
+            ? { role: 'user', text: m.content ?? '', attachments: m.attachments }
+            : { role: 'assistant', text: m.content ?? '' }
+        }
         if (m.role === 'tool') return { role: 'tool', label: m.content ?? '检索工具', name: m.name, done: true }
         if (m.role === 'card' && m.content) {
           try {
@@ -64,6 +69,8 @@ export function ChatWindow({
   const [busy, setBusy] = useState(false)
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const [confirmIdx, setConfirmIdx] = useState<number | null>(null)
+  /** 输入区待发送的附件（点回形针搜索添加，随下一条 user 消息发出并持久化） */
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([])
   /** msgs 的命令式镜像：回合结束 finally 里 state 尚未重渲染，必须靠它拿到含 tool/card 的完整序列再落库 */
   const msgsRef = useRef<UiMsg[]>(msgs)
   const updateMsgs = (fn: (prev: UiMsg[]) => UiMsg[]) => {
@@ -86,11 +93,13 @@ export function ChatWindow({
     if (el) el.scrollTo({ top: el.scrollHeight })
   }, [msgs])
 
-  /** 把剩余 UI 消息写回 thread 持久化（tool=label、card=JSON，均留痕但不送 LLM） */
+  /** 把剩余 UI 消息写回 thread 持久化（tool=label、card=JSON，均留痕但不送 LLM；user 消息保留附件） */
   const persistMsgs = (remaining: UiMsg[]) => {
     const messages: ChatMessage[] = remaining.map((m) =>
       m.role === 'user' || m.role === 'assistant'
-        ? { role: m.role, content: m.text || null }
+        ? m.role === 'user'
+          ? { role: 'user', content: m.text || null, attachments: m.attachments }
+          : { role: 'assistant', content: m.text || null }
         : m.role === 'tool'
           ? { role: 'tool', content: m.label, name: m.name }
           : { role: 'card', content: JSON.stringify(m.card) },
@@ -151,10 +160,15 @@ export function ChatWindow({
     }
 
     try {
+      const attachments = allAttachments()
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages, reportId: reportId ?? undefined }),
+        body: JSON.stringify({
+          messages: apiMessages,
+          reportId: reportId ?? undefined,
+          attachments: attachments.length ? attachments : undefined,
+        }),
       })
       if (!res.ok || !res.body) {
         let errMsg = '请求失败，请稍后重试。'
@@ -290,7 +304,9 @@ export function ChatWindow({
     const q = text.trim()
     if (!q || busy) return
     setInput('')
-    updateMsgs((prev) => [...prev, { role: 'user', text: q }])
+    const outgoing = pendingAttachments
+    setPendingAttachments([])
+    updateMsgs((prev) => [...prev, { role: 'user', text: q, attachments: outgoing.length ? outgoing : undefined }])
     await runTurn([...llmHistory(), { role: 'user', content: q }])
   }
 
@@ -311,6 +327,22 @@ export function ChatWindow({
     return thread.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   }
 
+  /** 会话内出现过的全部附件（去重）：随每次请求带给服务端展开为系统上下文 */
+  function allAttachments(): ChatAttachment[] {
+    const seen = new Set<string>()
+    const out: ChatAttachment[] = []
+    for (const m of msgsRef.current) {
+      if (m.role !== 'user' || !m.attachments) continue
+      for (const a of m.attachments) {
+        const key = `${a.type}:${a.id}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push(a)
+      }
+    }
+    return out
+  }
+
   return (
     <>
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
@@ -318,6 +350,20 @@ export function ChatWindow({
           m.role === 'user' ? (
             <div key={i} className="group flex justify-end">
               <div className="max-w-[80%]">
+                {m.attachments && m.attachments.length > 0 && (
+                  <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
+                    {m.attachments.map((a) => (
+                      <span
+                        key={`${a.type}:${a.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-neon/40 bg-ink-card/80 py-1 pl-2.5 pr-3 font-mono text-[11px] text-slate-300"
+                      >
+                        {a.type === 'report' ? <FileSearch className="h-3 w-3 text-neon" /> : <Building2 className="h-3 w-3 text-neon" />}
+                        {a.name}
+                        <span className="text-slate-600">{a.type === 'report' ? '报告' : '公司'}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="rounded-btn bg-neon px-4 py-2.5 text-sm leading-relaxed text-ink-bg">
                   {m.text}
                 </div>
@@ -409,6 +455,7 @@ export function ChatWindow({
         className="border-t border-ink-edge px-6 py-4"
       >
         <div className="glass-card mx-auto flex w-full max-w-2xl items-center gap-3 px-5 py-3.5">
+          <AttachmentPicker selected={pendingAttachments} onChange={setPendingAttachments} />
           <input
             ref={inputRef}
             value={input}

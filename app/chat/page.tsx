@@ -22,6 +22,7 @@ function ChatPageInner() {
   const threadId = params.get('thread')
   const company = params.get('company')
   const reportId = params.get('report')
+  const reportName = params.get('name')
   const [thread, setThread] = useState<ChatThread | null>(null)
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [checked, setChecked] = useState(false)
@@ -71,8 +72,8 @@ function ChatPageInner() {
   }, [company, threadId, router])
 
   useEffect(() => {
-    // 报告页「追问 AI」入口：/chat?report=<id> → 自动开新线程，首条消息引导追问，
-    // ChatWindow 通过 reportId prop 把该报告全量事实注入 /api/chat 作为系统上下文
+    // 报告页「与 AI 聊聊」入口：/chat?report=<id> → 自动开新线程，首条消息附报告快照附件，
+    // ChatWindow 会把附件随请求带给 /api/chat，服务端展开注入（AI 无需再调工具拉取）
     if (!reportId || threadId) return
     if (reportBooted.current) return
     reportBooted.current = true
@@ -80,7 +81,11 @@ function ChatPageInner() {
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `t-${Date.now()}`,
       title: '报告追问',
       at: Date.now(),
-      messages: [{ role: 'user', content: '我刚看完这家公司的 X 光报告，想继续追问几个点。' }],
+      messages: [{
+        role: 'user',
+        content: `我附着了「${reportName ?? '这家公司'}」的 X 光报告，想跟你聊聊它的情况。`,
+        attachments: [{ type: 'report', id: reportId, name: reportName ?? 'X 光报告', addedAt: Date.now() }],
+      }],
     }
     addChatThread(fresh)
     router.replace(`/chat?thread=${fresh.id}&report=${encodeURIComponent(reportId)}`)

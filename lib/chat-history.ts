@@ -1,9 +1,21 @@
+export interface ChatAttachment {
+  /** report=报告页带过来的 X 光快照；company=聊天中搜索添加的公司主体 */
+  type: 'report' | 'company'
+  /** reportId 或公司主体 id（股票代码/工商 id） */
+  id: string
+  /** 附件显示名（公司名） */
+  name: string
+  addedAt: number
+}
+
 export interface ChatMessage {
   /** tool=工具进度行（content=label）；card=报告卡（content=卡片 JSON 字符串）——均不落 LLM，仅本地留痕 */
   role: 'user' | 'assistant' | 'tool' | 'card'
   content: string | null
   /** tool 行的工具名，供前端图标映射 */
   name?: string
+  /** 用户消息附带的"附件"：报告快照 / 搜索添加的公司主体；服务端展开为系统上下文注入（AI 无需再调工具拉取） */
+  attachments?: ChatAttachment[]
 }
 
 export interface ChatThread {

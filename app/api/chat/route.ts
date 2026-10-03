@@ -2,11 +2,11 @@
 // 503（未配置）→ 检查在 JSON 解析之前；400（messages 空/非数组/JSON 非法）
 // 200 → ReadableStream，事件序列 runAgent 产出 + 末尾 done（或异常时 error 事件）
 // 事件编码：data: {json}\n\n；Content-Type: text/event-stream; charset=utf-8；Cache-Control: no-cache；force-dynamic
-// reportId（可选）：报告页「追问 AI」注入该报告全量事实快照作为系统上下文
+// body.attachments（可选）：用户附加的报告/公司快照，展开为系统上下文注入（AI 无需再调工具拉取）
+// body.reportId（可选，兼容旧入口）：等价于 attachments=[{type:'report',id:reportId}]
 import { runAgent } from '@/lib/chat/agent'
 import { llmAvailable, type ChatMessage } from '@/lib/llm/client'
-import { getXRay } from '@/lib/get-xray'
-import { buildFactPayload, buildSignalPayload } from '@/lib/llm/facts'
+import { expandAttachments, type RawAttachment } from '@/lib/chat/attachment-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,25 +33,29 @@ export async function POST(req: Request) {
     return Response.json({ error: 'messages_required' }, { status: 400 })
   }
 
-  // 可选：注入报告上下文（报告页「追问 AI」入口）
+  // 附件收集：body.attachments + 兼容旧 reportId 参数
+  const raw: RawAttachment[] = []
   const reportId = (body as { reportId?: unknown })?.reportId
-  let reportContext: ChatMessage | null = null
   if (typeof reportId === 'string' && reportId.trim()) {
-    try {
-      const xray = await getXRay(reportId.trim())
-      reportContext = {
-        role: 'system',
-        content: [
-          `以下是用户刚查看的「${xray.name}」X 光报告全量事实快照（基准日 ${xray.asOf}）。`,
-          `灯色：${xray.overallRisk === 'green' ? '绿灯' : xray.overallRisk === 'yellow' ? '黄灯' : '红灯'}，风险评分 ${xray.riskScore}/100。`,
-          `结论：${xray.verdict}`,
-          `五维事实：${JSON.stringify(buildFactPayload(xray))}`,
-          `命中信号：${JSON.stringify(buildSignalPayload(xray))}`,
-          '用户的问题是基于这份报告追问，请结合上述事实回答；不要重复整份报告，聚焦用户追问的点。',
-        ].join('\n'),
+    raw.push({ type: 'report', id: reportId.trim() })
+  }
+  const bodyAttachments = (body as { attachments?: unknown })?.attachments
+  if (Array.isArray(bodyAttachments)) {
+    for (const a of bodyAttachments) {
+      const att = a as RawAttachment
+      if (att && typeof att === 'object' && typeof att.id === 'string') {
+        raw.push({ type: att.type === 'company' ? 'company' : 'report', id: att.id, name: typeof att.name === 'string' ? att.name : undefined })
       }
+    }
+  }
+
+  let attachmentContext: ChatMessage | null = null
+  if (raw.length) {
+    try {
+      const text = await expandAttachments(raw)
+      if (text) attachmentContext = { role: 'system', content: text }
     } catch {
-      // 报告取数失败：静默降级为普通对话
+      // 附件展开失败：静默降级为普通对话（AI 仍可走工具路径）
     }
   }
 
@@ -59,7 +63,7 @@ export async function POST(req: Request) {
     async start(controller) {
       const send = (data: unknown) => controller.enqueue(encodeEvent(data))
       try {
-        await runAgent(messages as ChatMessage[], send, reportContext ? [reportContext] : undefined)
+        await runAgent(messages as ChatMessage[], send, attachmentContext ? [attachmentContext] : undefined)
         send({ type: 'done' })
       } catch (err) {
         send({ type: 'error', message: err instanceof Error ? err.message : 'unknown_error' })

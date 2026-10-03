@@ -168,11 +168,11 @@ export function AiInsightCard({
         {/* 底部：追问入口 + 生成信息 */}
         <div className="mt-4 flex items-center justify-between border-t border-edge pt-3">
           <Link
-            href={`/chat?report=${encodeURIComponent(reportId)}`}
+            href={`/chat?report=${encodeURIComponent(reportId)}&name=${encodeURIComponent(companyName)}`}
             className="flex items-center gap-1.5 font-mono text-[11px] tracking-wider text-neon transition-colors hover:text-neon/80"
           >
             <MessageSquare className="h-3.5 w-3.5" />
-            追问 AI →
+            与 AI 聊聊 →
           </Link>
           {meta && (
             <span className="font-mono text-[10px] text-slate-600">

@@ -42,6 +42,9 @@ export function useLlmFieldStream(
   const [meta, setMeta] = useState<FieldStreamMeta | null>(null)
 
   const queueRef = useRef<FieldStreamItem[]>([])
+  /** 真流式 slot 的累计全文（mirror of typing.full）：增量事件在 setState updater 外累加，
+   *  回调也在 updater 外触发——updater 必须纯，且在渲染期可能被 React 重复调用 */
+  const streamFullRef = useRef<Record<string, string>>({})
   const [typing, setTyping] = useState<{ slot: string; full: string; len: number } | null>(null)
   const [display, setDisplay] = useState<Record<string, string>>({})
   const [tick, setTick] = useState(0)
@@ -59,6 +62,7 @@ export function useLlmFieldStream(
 
   const regenerate = useCallback(() => {
     queueRef.current = []
+    streamFullRef.current = {}
     setDisplay({})
     setTyping(null)
     setFailed(false)
@@ -144,15 +148,17 @@ export function useLlmFieldStream(
               }
               setTick((t) => t + 1)
             } else if (ev.type === 'stream' && ev.field && typeof ev.delta === 'string') {
-              // 真流式增量：直接推进/初始化对应 slot 的打字机（打字机即流式渲染，天然边到边显）
+              // 真流式增量：在 updater 外累加全文并触发回调，setTyping 只负责打字机推进（updater 必须纯）
               receivedRef.current = true
-              setTyping((t) => {
-                const next = t && t.slot === ev.field
-                  ? { ...t, full: t.full + ev.delta! }
-                  : { slot: ev.field!, full: ev.delta!, len: 0 }
-                onSlotDeltaRef.current?.(ev.field!, next.full)
-                return next
-              })
+              const field = ev.field
+              const full = (streamFullRef.current[field] ?? '') + ev.delta
+              streamFullRef.current = { ...streamFullRef.current, [field]: full }
+              onSlotDeltaRef.current?.(field, full)
+              setTyping((t) =>
+                t && t.slot === field
+                  ? { ...t, full }
+                  : { slot: field, full, len: 0 },
+              )
               setTick((t) => t + 1)
             } else if (ev.type === 'done') {
               doneRef.current = true
