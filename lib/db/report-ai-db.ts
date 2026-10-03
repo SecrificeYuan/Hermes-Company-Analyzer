@@ -32,6 +32,17 @@ function openDbAt(file: string): DatabaseSync | null {
         PRIMARY KEY (report_id, as_of)
       )
     `)
+    // 对比页深度对比缓存：同一对公司同一对数据快照只生成一次
+    instance.exec(`
+      CREATE TABLE IF NOT EXISTS compare_ai (
+        cache_key        TEXT PRIMARY KEY,
+        summary          TEXT NOT NULL,
+        verdict          TEXT NOT NULL DEFAULT '',
+        dimension_notes  TEXT NOT NULL DEFAULT '{}',
+        model            TEXT NOT NULL,
+        generated_at     TEXT NOT NULL
+      )
+    `)
     return instance
   } catch {
     return null
@@ -96,4 +107,53 @@ export function __resetReportAiDbForTest(file?: string): void {
     // 已关闭
   }
   db = file ? openDbAt(file) : undefined
+}
+
+export interface CompareAiRow {
+  summary: string
+  verdict: string
+  /** 五维对比短评 JSON 字符串 */
+  dimensionNotes: string
+  model: string
+  generatedAt: string
+}
+
+export function getCompareAi(cacheKey: string): CompareAiRow | null {
+  const d = getDb()
+  if (!d) return null
+  try {
+    const row = d
+      .prepare('SELECT summary, verdict, dimension_notes, model, generated_at FROM compare_ai WHERE cache_key = ?')
+      .get(cacheKey) as unknown
+    if (!row || typeof row !== 'object') return null
+    const r = row as Record<string, unknown>
+    return {
+      summary: String(r.summary ?? ''),
+      verdict: String(r.verdict ?? ''),
+      dimensionNotes: String(r.dimension_notes ?? '{}'),
+      model: String(r.model ?? ''),
+      generatedAt: String(r.generated_at ?? ''),
+    }
+  } catch {
+    return null
+  }
+}
+
+export function saveCompareAi(cacheKey: string, row: CompareAiRow): void {
+  const d = getDb()
+  if (!d) return
+  try {
+    d.prepare(`
+      INSERT INTO compare_ai (cache_key, summary, verdict, dimension_notes, model, generated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT (cache_key) DO UPDATE SET
+        summary = excluded.summary,
+        verdict = excluded.verdict,
+        dimension_notes = excluded.dimension_notes,
+        model = excluded.model,
+        generated_at = excluded.generated_at
+    `).run(cacheKey, row.summary, row.verdict, row.dimensionNotes, row.model, row.generatedAt)
+  } catch {
+    // 写失败仅损失缓存，不影响当次输出
+  }
 }

@@ -22,6 +22,8 @@ export interface ChatOptions {
   messages: ChatMessage[]
   tools?: ToolSpec[]
   maxTokens?: number
+  /** 单次请求超时（默认 30s）；喂推理模型大 payload 时按需加大 */
+  timeoutMs?: number
   signal?: AbortSignal
 }
 
@@ -60,14 +62,14 @@ function buildRequest(cfg: NonNullable<ReturnType<typeof llmConfig>>, opts: Chat
   }
 }
 
-function buildUrlSignal(signal: AbortSignal | undefined): { signal: AbortSignal; clear: () => void } {
+function buildUrlSignal(signal: AbortSignal | undefined, timeoutMs?: number): { signal: AbortSignal; clear: () => void } {
   const ctrl = new AbortController()
   const onAbort = () => ctrl.abort()
   if (signal) {
     if (signal.aborted) ctrl.abort()
     else signal.addEventListener('abort', onAbort, { once: true })
   }
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs ?? TIMEOUT_MS)
   return {
     signal: ctrl.signal,
     clear: () => {
@@ -83,7 +85,7 @@ export async function chatOnce(opts: ChatOptions): Promise<ChatResult | null> {
 
   // 仅 JSON 解析失败重试 1 次；网络/HTTP 错误不重试
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { signal, clear } = buildUrlSignal(opts.signal)
+    const { signal, clear } = buildUrlSignal(opts.signal, opts.timeoutMs)
     try {
       const { url, init } = buildRequest(cfg, opts, false)
       const res = await fetch(url, { ...init, signal })
@@ -137,7 +139,7 @@ export async function* chatStream(opts: ChatOptions): AsyncGenerator<{ type: 'de
   try {
     const cfg = llmConfig()
     if (!cfg) return
-    const { signal, clear } = buildUrlSignal(opts.signal)
+    const { signal, clear } = buildUrlSignal(opts.signal, opts.timeoutMs)
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
     try {
       const { url, init } = buildRequest(cfg, opts, true)

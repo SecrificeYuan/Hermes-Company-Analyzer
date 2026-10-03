@@ -111,7 +111,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
             </Button>
             <div className="flex items-center gap-2">
               <Button asChild variant="ghost" size="sm">
-                <Link href="/compare"><GitCompareArrows /> 双公司对比</Link>
+                <Link href={xray.stockCode ? `/compare?a=${xray.stockCode}` : '/compare'}><GitCompareArrows /> 双公司对比</Link>
               </Button>
               {!health && <ShareCard xray={xray} />}
             </div>

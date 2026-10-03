@@ -57,6 +57,10 @@ export function buildVerdict(input: {
   const { industry, hp, def, overallRisk, hiddenStatus } = input
   const top = hiddenStatus[0]
   const positiveWord = hp >= 75 ? '优等生' : hp >= 50 ? '网红新星' : '昔日明星'
+  // 只写有证据支撑的风险名：前 3 条逐一点名，超出才用「等 N 项」收尾；无证据不虚构
+  const named = hiddenStatus.slice(0, 3).map((h) => `「${h.label}」`).join('、')
+  const riskPhrase =
+    hiddenStatus.length > 3 ? `${named} 等 ${hiddenStatus.length} 项风险信号已触发` : `${named}风险信号已触发`
 
   if (overallRisk === 'green') {
     return {
@@ -66,12 +70,16 @@ export function buildVerdict(input: {
   }
   if (overallRisk === 'yellow') {
     return {
-      verdict: `表面是${industry}${positiveWord}，实际血条 ${hp}%，「${top?.label ?? '多项风险'}」已触发，需要持续跟踪。`,
+      verdict: top
+        ? `表面是${industry}${positiveWord}，实际血条 ${hp}%，${riskPhrase}，需要持续跟踪。`
+        : `表面是${industry}${positiveWord}，实际血条 ${hp}%、护甲 ${def}%，综合评分亮黄灯，需要持续跟踪。`,
       advice: '建议控制仓位、设置止损线，重点跟踪质押比例与减持动向，等待风险出清信号。',
     }
   }
   return {
-    verdict: `表面是${industry}${positiveWord}，实际血条 ${hp}%，「${top?.label ?? '多重暴雷'}」等 ${hiddenStatus.length} 项隐藏状态缠身。`,
+    verdict: top
+      ? `表面是${industry}${positiveWord}，实际血条 ${hp}%，${riskPhrase}，需高度警惕。`
+      : `表面是${industry}${positiveWord}，实际血条 ${hp}%、护甲 ${def}%，综合评分亮红灯。`,
     advice: '不建议将储蓄投入；已持有者应考虑止损离场，远离其债务与供应链链条。',
   }
 }

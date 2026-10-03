@@ -9,8 +9,8 @@ describe('parseCompareParams URL 参数校验', () => {
     expect(parseCompareParams({ a: '600519', b: '600519' })).toBeNull())
   it('非 6 位代码（含旧 mock id）→ null', () =>
     expect(parseCompareParams({ a: '600519', b: 'mock-danger' })).toBeNull())
-  it('缺失一个参数 → null', () =>
-    expect(parseCompareParams({ a: '600519' })).toBeNull())
+  it('只有单码 → 回填该槽位', () =>
+    expect(parseCompareParams({ a: '600519' })).toEqual({ a: '600519', b: undefined }))
   it('空对象 / null → null', () => {
     expect(parseCompareParams({})).toBeNull()
     expect(parseCompareParams(null)).toBeNull()

@@ -14,6 +14,7 @@ const encodeEvent = (data: unknown): Uint8Array => encoder.encode(`data: ${JSON.
 
 export async function GET(req: Request) {
   const reportId = new URL(req.url).searchParams.get('reportId')
+  const forceRefresh = new URL(req.url).searchParams.get('refresh') === '1'
   if (!reportId) {
     return Response.json({ error: 'reportId_required' }, { status: 400 })
   }
@@ -27,8 +28,8 @@ export async function GET(req: Request) {
         // 截断到「日」作缓存键——同日视为同一份数据快照，数据真正更新跨天后自然失效
         const cacheKey = xray.asOf.slice(0, 10)
 
-        // 1) 缓存命中：直接回放（含 LLM 未配置但库里已有内容的历史生成）
-        const cached = getReportAi(reportId, cacheKey)
+        // 1) 缓存命中：直接回放（refresh=1 为重试/重新生成，跳过缓存并覆盖落库）
+        const cached = forceRefresh ? null : getReportAi(reportId, cacheKey)
         if (cached) {
           send({ type: 'field', field: 'summary', text: cached.summary })
           if (cached.lightReason) {

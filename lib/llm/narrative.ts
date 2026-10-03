@@ -22,6 +22,7 @@ export function buildActionAdviceMessages(xray: CompanyXRay, scenario: string): 
     '铁律一：不得出现输入数据之外的任何数字（尤其百分数），不确定就说「资料不足，无法确认」。',
     '铁律二：资料不足时明说，不得编造。',
     '铁律三：caveat 必须包含「历史不代表未来」。',
+    '铁律四：直接对读者说话，不得出现「模板」「命中信号」「输入数据」等内部词汇；没有命中信号就说「未发现异常信号」，不得反问自己拿到的资料。',
   ].join('\n')
 
   const user = JSON.stringify({
@@ -31,7 +32,10 @@ export function buildActionAdviceMessages(xray: CompanyXRay, scenario: string): 
     场景: scenario,
     血条: `${xray.hp.score}%`,
     护甲: `${xray.def.score}%`,
-    命中信号: xray.hiddenStatus.map((h) => `${h.label}（${h.severity}）：${h.description}`),
+    命中信号: xray.hiddenStatus.length
+      ? xray.hiddenStatus.map((h) => `${h.label}（${h.severity}）：${h.description}`)
+      : '未发现异常信号',
+    维度事实: dimensionFacts(xray),
     模板结论: xray.verdict,
     模板建议: xray.advice,
     数据基准日: xray.asOf,
@@ -41,6 +45,22 @@ export function buildActionAdviceMessages(xray: CompanyXRay, scenario: string): 
     { role: 'system', content: system },
     { role: 'user', content: user },
   ]
+}
+
+/** 五维各自的实测事实（未取回的数据明确标注，不得当作零风险解读）。 */
+export function dimensionFacts(xray: CompanyXRay): Record<string, string> {
+  const riskyNodes = xray.graph.nodes.filter((n) => n.risk >= 60).length
+  return {
+    财务健康: `评分 ${xray.hp.score}/100（${xray.hp.label}），资产负债率 ${xray.hp.debtRatio}%，最近一年经营现金流 ${xray.hp.cashFlow} 万元`,
+    股权质押: `评分 ${xray.def.score}/100（${xray.def.label}），质押比例 ${xray.def.pledgeRatio}%，资产覆盖率 ${xray.def.assetCoverage}%`,
+    涉诉: xray.atk.available === false
+      ? '司法数据尚未取回，本维度不做判断'
+      : `评分 ${xray.atk.score}/100（${xray.atk.label}），涉诉 ${xray.atk.lawsuitCount} 件，被执行金额 ${xray.atk.executionAmount} 万元`,
+    舆情: xray.morale.available === false
+      ? '舆情数据尚未独立取回，本维度不做判断'
+      : `评分 ${xray.morale.score}/100（${xray.morale.label}），平均情绪 ${xray.morale.avgTone}/10`,
+    关联网络: `关联实体 ${xray.graph.nodes.length} 个、关系 ${xray.graph.links.length} 条，其中高风险实体 ${riskyNodes} 个`,
+  }
 }
 
 /**
@@ -84,6 +104,10 @@ function collectTraceableNumbers(xray: CompanyXRay): Set<string> {
   const set = new Set<string>()
   set.add(String(xray.hp.score))
   set.add(String(xray.def.score))
+  // 维度事实里明喂的百分数同样是合法出处
+  set.add(String(xray.hp.debtRatio))
+  set.add(String(xray.def.pledgeRatio))
+  set.add(String(xray.def.assetCoverage))
   for (const h of xray.hiddenStatus) {
     for (const e of h.evidence ?? []) {
       for (const m of String(e.detail).matchAll(/\d+(?:\.\d+)?/g)) {
@@ -113,7 +137,7 @@ const INSIGHT_FIELD_SPEC: Record<InsightField, string> = {
   lightReason:
     '只输出一个 JSON 对象 {"lightReason": string}。lightReason 是一句话（不超过 40 字），直白解释为什么是这盏灯，不堆术语、不出现数字。',
   sectionNotes:
-    '只输出一个 JSON 对象 {"sectionNotes": object}，object 的键只能是 hp（财务健康）/ def（股权质押）/ atk（涉诉）/ morale（舆情）/ network（关联网络），每个值是 40~70 字的分维度短评，人话、只点该维度最值得注意的一点；某维度数据不足时值写「资料不足，无法确认」。',
+    '只输出一个 JSON 对象 {"sectionNotes": object}，object 的键只能是 hp（财务健康）/ def（股权质押）/ atk（涉诉）/ morale（舆情）/ network（关联网络），每个值是 40~70 字的分维度短评，人话、只点该维度最值得注意的一点，必须基于「维度事实」里该维度的数据写；维度事实标注「尚未取回」的值才写「资料不足，无法确认」，其余维度禁止写「资料不足」。',
 }
 
 /** 构造报告页 AI 点评某一段的完整消息序列。 */
@@ -125,6 +149,7 @@ export function buildInsightMessages(xray: CompanyXRay, field: InsightField): Ch
     INSIGHT_FIELD_SPEC[field],
     '铁律一：不得出现输入数据之外的任何数字（尤其百分数），不确定就说「资料不足，无法确认」。',
     '铁律二：资料不足时明说，不得编造。',
+    '铁律三：直接对读者说话，不得出现「模板」「命中信号」「输入数据」等内部词汇；没有命中信号就说「未发现异常信号」。',
   ].join('\n')
 
   const user = JSON.stringify({
@@ -133,7 +158,10 @@ export function buildInsightMessages(xray: CompanyXRay, field: InsightField): Ch
     灯色: lamp,
     血条: `${xray.hp.score}%`,
     护甲: `${xray.def.score}%`,
-    命中信号: xray.hiddenStatus.map((h) => `${h.label}（${h.severity}）`),
+    命中信号: xray.hiddenStatus.length
+      ? xray.hiddenStatus.map((h) => `${h.label}（${h.severity}）`)
+      : '未发现异常信号',
+    维度事实: dimensionFacts(xray),
     模板结论: xray.verdict,
     数据基准日: xray.asOf,
   })
@@ -190,7 +218,18 @@ export function parseInsight(
  * 叙事层与 verdict 润色路径共用。
  */
 export function assertPercentTraceable(text: string, xray: CompanyXRay): boolean {
-  const legal = collectTraceableNumbers(xray)
+  return assertPercentTraceableAny(text, [xray])
+}
+
+/**
+ * 跨公司版百分数可溯源守卫：文本中出现的每个百分数，其数字必须能在
+ * 任一给定面板数据中找到出处（对比场景两家公司的数字均合法）。
+ */
+export function assertPercentTraceableAny(text: string, xrays: CompanyXRay[]): boolean {
+  const legal = new Set<string>()
+  for (const x of xrays) {
+    for (const n of collectTraceableNumbers(x)) legal.add(n)
+  }
   for (const m of text.matchAll(/(\d+(?:\.\d+)?)%/g)) {
     if (!legal.has(m[1])) return false
   }

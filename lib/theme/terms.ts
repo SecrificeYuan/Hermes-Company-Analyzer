@@ -86,7 +86,7 @@ const LITE: Terms = {
     verdictQuoteTitle: '两边各一句',
     cardTitles: { table: '关键指标对比', trend: '趋势对决', risk: '风险状态对决' },
     llmTitle: 'AI 深度对比',
-    llmHint: '大模型多维归因 · 即将上线',
+    llmHint: '大模型多维归因 · 配置 LLM 后解锁',
   },
 }
 
@@ -134,7 +134,7 @@ const PRO: Terms = {
     verdictQuoteTitle: '诊断引述',
     cardTitles: { table: '关键指标对比', trend: '趋势对比', risk: '风险事件对比' },
     llmTitle: 'AI 深度对比',
-    llmHint: '大模型多维归因分析 · 即将上线',
+    llmHint: '大模型多维归因分析 · 配置 LLM 后解锁',
   },
 }
 

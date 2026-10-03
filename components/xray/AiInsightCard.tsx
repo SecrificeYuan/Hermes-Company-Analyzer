@@ -1,29 +1,22 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import Link from 'next/link'
-import { MessageSquare, Sparkles } from 'lucide-react'
+import { MessageSquare, RotateCcw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useMode } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
+import { useLlmFieldStream } from '@/lib/hooks/use-llm-field-stream'
 import type { CompanyXRay, NarrativeKey } from '@/lib/types'
 
 /**
  * 报告页 AI 点评卡（LITE/PRO 共用）：
- * - 挂载后异步拉 /api/report-ai（SSE 字段级），LLM 未配置时整块不渲染
+ * - 挂载后经 useLlmFieldStream 异步拉 /api/report-ai（SSE 字段级），LLM 未配置时整块不渲染
  * - 字段到达进打字机队列逐字渲染（22ms/字），summary 最先到达
  * - LITE = summary + 灯语 + 下一步建议（吸收原 NextStepsCard）；PRO 额外渲染五维短评
  * - 生成失败的兜底是一行小字占位，不拖垮报告主体
  */
-type Slot = 'summary' | 'lightReason' | `note.${NarrativeKey}`
-
-interface QueueItem {
-  slot: Slot
-  text: string
-}
-
 const DIMENSION_ORDER: NarrativeKey[] = ['hp', 'def', 'atk', 'morale', 'network']
-const TYPE_MS = 22
 
 export function AiInsightCard({
   reportId,
@@ -38,121 +31,26 @@ export function AiInsightCard({
 }) {
   const mode = useMode()
   const terms = getTerms(mode)
-  const [llmUp, setLlmUp] = useState<boolean | null>(null)
-  const [failed, setFailed] = useState(false)
-  const [meta, setMeta] = useState<{ model: string; generatedAt: string } | null>(null)
 
-  const queueRef = useRef<QueueItem[]>([])
-  const [typing, setTyping] = useState<{ slot: Slot; full: string; len: number } | null>(null)
-  const [display, setDisplay] = useState<Partial<Record<Slot, string>>>({})
-  const [tick, setTick] = useState(0)
-  const receivedRef = useRef(false)
-  const doneRef = useRef(false)
-  const onSummaryRef = useRef(onSummary)
-  onSummaryRef.current = onSummary
-
-  // 打字机消费循环：tick 驱动取队首，逐字推进，完成即落 display
-  useEffect(() => {
-    if (typing) {
-      if (typing.len >= typing.full.length) {
-        const slot = typing.slot
-        setDisplay((d) => ({ ...d, [slot]: typing.full }))
-        if (slot === 'summary') onSummaryRef.current?.(typing.full)
-        setTyping(null)
-        setTick((t) => t + 1)
-      } else {
-        const timer = window.setTimeout(
-          () => setTyping((t) => (t ? { ...t, len: t.len + 1 } : t)),
-          TYPE_MS,
-        )
-        return () => window.clearTimeout(timer)
-      }
-      return
+  const expand = useCallback((field: string, text: string) => {
+    if (field !== 'sectionNotes') return null
+    try {
+      const notes = JSON.parse(text) as Partial<Record<NarrativeKey, string>>
+      return DIMENSION_ORDER.filter((k) => notes[k]).map((k) => ({ slot: `note.${k}`, text: notes[k] as string }))
+    } catch {
+      return [] // 坏 JSON：推空队列项集合，忽略该段
     }
-    const next = queueRef.current.shift()
-    if (next) setTyping({ slot: next.slot, full: next.text, len: 0 })
-  }, [typing, tick])
+  }, [])
 
-  // 拉取 SSE：先探测 llm-status，再读字段流；零事件兜底标失败
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const st = await fetch('/api/llm-status')
-        if (!st.ok) {
-          setLlmUp(false)
-          return
-        }
-        const status: unknown = await st.json()
-        if (cancelled) return
-        if (!(status as { available?: boolean })?.available) {
-          setLlmUp(false)
-          return
-        }
-        setLlmUp(true)
+  const handleSlotDone = useCallback((slot: string, text: string) => {
+    if (slot === 'summary') onSummary?.(text)
+  }, [onSummary])
 
-        const res = await fetch(`/api/report-ai?reportId=${encodeURIComponent(reportId)}`)
-        if (!res.ok || !res.body) {
-          setFailed(true)
-          return
-        }
-        const reader = res.body.getReader()
-        const decoder = new TextDecoder()
-        let buf = ''
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buf += decoder.decode(value, { stream: true })
-          const blocks = buf.split('\n\n')
-          buf = blocks.pop() ?? ''
-          for (const block of blocks) {
-            const line = block.trim()
-            if (!line.startsWith('data:')) continue
-            let ev: { type?: string; field?: string; text?: string; model?: string; generatedAt?: string; message?: string }
-            try {
-              ev = JSON.parse(line.slice(5).trim())
-            } catch {
-              continue
-            }
-            if (ev.type === 'field' && ev.field && typeof ev.text === 'string') {
-              receivedRef.current = true
-              if (ev.field === 'sectionNotes') {
-                try {
-                  const notes = JSON.parse(ev.text) as Partial<Record<NarrativeKey, string>>
-                  for (const k of DIMENSION_ORDER) {
-                    if (notes[k]) queueRef.current.push({ slot: `note.${k}`, text: notes[k] as string })
-                  }
-                } catch {
-                  // 坏 JSON 忽略该段
-                }
-              } else {
-                queueRef.current.push({ slot: ev.field as Slot, text: ev.text })
-              }
-              setTick((t) => t + 1)
-            } else if (ev.type === 'done') {
-              doneRef.current = true
-              if (ev.model && ev.generatedAt) setMeta({ model: ev.model, generatedAt: ev.generatedAt })
-            } else if (ev.type === 'error') {
-              setFailed(true)
-            }
-          }
-        }
-        if (!cancelled && !doneRef.current && !receivedRef.current) setFailed(true)
-      } catch {
-        if (!cancelled) setFailed(true)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [reportId])
+  const { llmUp, failed, meta, display, valueOf, regenerate, regenerating } = useLlmFieldStream(
+    `/api/report-ai?reportId=${encodeURIComponent(reportId)}`,
+    { expand, onSlotDone: handleSlotDone },
+  )
 
-  /** 渲染值：已完成字段 > 正在打的草稿 > undefined（未开始） */
-  const valueOf = (slot: Slot): string | undefined => {
-    if (display[slot] !== undefined) return display[slot]
-    if (typing?.slot === slot) return typing.full.slice(0, typing.len)
-    return undefined
-  }
   const summaryVal = valueOf('summary')
   const lightVal = valueOf('lightReason')
   const hasContent = display.summary !== undefined
@@ -167,7 +65,16 @@ export function AiInsightCard({
           <span className="font-mono text-[10px] tracking-[0.3em] text-slate-500">
             {mode === 'lite' ? 'AI 点评' : 'AI ANALYSIS'}
           </span>
-          <Sparkles className="h-3.5 w-3.5 text-grape" />
+          <button
+            type="button"
+            onClick={regenerate}
+            disabled={regenerating}
+            title="重新生成"
+            className="flex items-center gap-1 font-mono text-[10px] tracking-wider text-grape transition-colors hover:text-grape/80 disabled:opacity-40"
+          >
+            <RotateCcw className={`h-3.5 w-3.5 ${regenerating ? 'animate-spin' : ''}`} />
+            {regenerating ? '生成中…' : '重试'}
+          </button>
         </div>
 
         {/* 失败且无任何内容：降级占位（B 方案） */}

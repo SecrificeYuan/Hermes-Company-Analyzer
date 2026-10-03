@@ -13,14 +13,14 @@ import { EvidenceDrawer } from '@/components/xray/EvidenceDrawer'
 import { CompareSelector, type SlotPick } from './CompareSelector'
 import { ProLoading } from './ProLoading'
 import { CompareVerdictBar } from './CompareVerdictBar'
+import { CompareInsightCard } from './CompareInsightCard'
 import { DualRadar } from './DualRadar'
-import { LlmPlaceholder } from './LlmPlaceholder'
+import { LiteLoading } from './LiteLoading'
 import { MetricCompareTable } from './MetricCompareTable'
 import { RiskCompare } from './RiskCompare'
 import { TrendCompare } from './TrendCompare'
 import { compareVerdict } from '@/lib/analysis/compare-verdict'
 import type { CompareSelection } from '@/lib/compare-params'
-import type { SnapshotSubject } from '@/lib/data/snapshot-subjects'
 import type { ListedCompany } from '@/lib/data/eastmoney'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
@@ -70,11 +70,13 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
 
   useEffect(() => {
     if (!initialPick) return
-    void run({ A: initialPick.a, B: initialPick.b })
-    // URL 带参自动开战；同时回填公司名供选择器展示
+    // 双码齐全才自动开战；单码只回填该槽位，等用户挑另一家
+    if (initialPick.a && initialPick.b) void run({ A: initialPick.a, B: initialPick.b })
+    // URL 带参回填公司名供选择器展示
     void Promise.all(
       (['A', 'B'] as Slot[]).map(async (slot) => {
         const code = slot === 'A' ? initialPick.a : initialPick.b
+        if (!code) return
         try {
           const res = await fetch(`/api/search?q=${encodeURIComponent(code)}`)
           const data = (await res.json()) as { found: boolean; company?: ListedCompany }
@@ -92,11 +94,6 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
   }, [])
 
   const sameCompany = pick.A !== null && pick.A.id === pick.B?.id
-
-  // 快照主体：占位注册表条目映射为宽松 SlotPick（sub=身份标签），数据由 slug 分支的健康评估管线产出
-  const handlePickSnapshot = useCallback((slot: Slot, subject: SnapshotSubject) => {
-    setPick((p) => ({ ...p, [slot]: { id: subject.id, name: subject.name, sub: subject.tag } }))
-  }, [])
 
   const handleRun = () => {
     if (!pick.A || !pick.B) return
@@ -131,7 +128,6 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
       <CompareSelector
         value={pick}
         onChange={(slot, next) => setPick((p) => ({ ...p, [slot]: next }))}
-        onPickSnapshot={handlePickSnapshot}
         onRun={handleRun}
         loading={loading}
         sameCompany={sameCompany}
@@ -158,17 +154,7 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
       )}
 
       {loading && (mode === 'pro' ? <ProLoading /> : (
-        <div className="mt-6 grid gap-6 lg:grid-cols-2" aria-busy="true">
-          {[0, 1].map((i) => (
-            <div key={i} className="glass-card h-72 animate-pulse p-6">
-              <div className="h-5 w-1/3 rounded bg-ink-bg/80" />
-              <div className="mt-4 h-3 w-2/3 rounded bg-ink-bg/80" />
-              <div className="mt-2 h-3 w-1/2 rounded bg-ink-bg/80" />
-              <div className="mt-6 h-24 rounded bg-ink-bg/60" />
-            </div>
-          ))}
-          <p className="col-span-2 text-center font-mono text-xs text-slate-500">正在生成两份体检报告…</p>
-        </div>
+        <LiteLoading aName={pick.A?.name} bName={pick.B?.name} />
       ))}
 
       {!loading && !error && result && (mode === 'pro'
@@ -273,7 +259,7 @@ function ProFlow({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
         <CompareVerdictBar a={a} b={b} />
       </motion.div>
       <motion.div variants={fade} custom={1} initial="hidden" animate="show" className="mt-6">
-        <LlmPlaceholder />
+        <CompareInsightCard a={a} b={b} />
       </motion.div>
       <motion.div variants={fade} custom={2} initial="hidden" animate="show" className="mt-6">
         <Card>

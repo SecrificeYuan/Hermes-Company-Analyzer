@@ -5,7 +5,7 @@ import { Sparkles } from 'lucide-react'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 
-/** LLM 深度对比占位卡：本期纯展示，后续版本接入真实分析结果 */
+/** LLM 未配置时的深度对比降级卡（功能本体见 CompareInsightCard） */
 export function LlmPlaceholder() {
   const t = useTokens()
   const terms = getTerms(useMode()).compare
