@@ -241,7 +241,18 @@ export function ChatWindow({
             })
           } else if (ev.type === 'report_card' && ev.reportCard) {
             sawCard = true
-            setMsgs((prev) => [...prev, { role: 'card', card: ev.reportCard as ReportCardData }])
+            setMsgs((prev) => {
+              const next = [...prev]
+              // 工具执行期间的占位气泡在卡片上方——挪到卡片下面，口播才会流在卡片之后
+              const idx = pendingAiRef.current
+              if (idx >= 0 && idx < next.length && next[idx].role === 'assistant' && next[idx].text === '') {
+                next.splice(idx, 1)
+              }
+              next.push({ role: 'card', card: ev.reportCard as ReportCardData })
+              pendingAiRef.current = next.length
+              next.push({ role: 'assistant', text: '' })
+              return next
+            })
           } else if (ev.type === 'error') {
             appendToAi(ev.message ?? '出错了')
           }
