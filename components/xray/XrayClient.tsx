@@ -31,11 +31,12 @@ import { ShareCard } from '@/components/share/ShareCard'
 import { AiGlanceCard } from './AiGlanceCard'
 import { AiInsightCard } from './AiInsightCard'
 import { useSentiment } from './useSentiment'
+import { useCourtAnnouncements } from './useCourtAnnouncements'
 import { detailOrder, glanceLayout, narrativeOf } from '@/lib/narrative'
 import type { DetailSectionId, GlanceSlot } from '@/lib/narrative'
 import { useMode } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
-import type { CompanyXRay, NarrativeKey } from '@/lib/types'
+import type { CompanyXRay, CourtSearchResult, NarrativeKey } from '@/lib/types'
 import type { CompanyHealth } from '@/lib/company'
 
 /** 统一出场缓动：ease-out 长尾，避免线性/突变感 */
@@ -75,6 +76,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
   const mode = useMode()
   const terms = getTerms(mode)
   const { snapshot: sentiment, loading: sentimentLoading, slow: sentimentSlow } = useSentiment(xray.id)
+  const court = useCourtAnnouncements(xray.id)
   // AI 点评卡流式生成过程中实时回填速览层（AiGlanceCard 边生成边预览，meta 到达后定格）
   const [aiInsight, setAiInsight] = useState<{ text: string; model?: string; generatedAt?: string } | null>(null)
   const handleSummaryDelta = useCallback((text: string) => {
@@ -101,7 +103,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
   const proCharts: Record<GlanceSlot, ReactNode> = {
     finance: health && !health.years.length ? <MissingMetric label="完整年度财报" /> : <CashFlowChart hp={displayXray.hp} height={280} />,
     equity: health && health.metrics.pledgeRatio === null ? <MissingMetric label="股权质押" /> : <PledgeSummary xray={displayXray} />,
-    legal: health && health.metrics.lawsuitAnnouncements === null ? <MissingMetric label="司法记录" /> : <LawsuitHeatmap timeline={displayXray.timeline} available={displayXray.atk.available !== false} height={280} />,
+    legal: <><CourtPreview result={court} />{health && health.metrics.lawsuitAnnouncements === null ? <MissingMetric label="完整司法与执行记录" /> : <LawsuitHeatmap timeline={displayXray.timeline} available={displayXray.atk.available !== false} height={280} />}</>,
     sentiment: health ? <MissingMetric label="可核实的舆情记录" /> : <SentimentCurve morale={displayXray.morale} height={280} loading={sentimentLoading} slow={sentimentSlow} message={sentiment?.message} />,
     network: health ? <MissingMetric label="关联网络" /> : <RelationGraph graph={displayXray.graph} centerLabel={displayXray.name} height={280} />,
   }
@@ -155,7 +157,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
                 const k = LITE_SECTION_KEY[id]
                 return k ? (
                   <motion.div key={id} variants={rise} custom={2 + i} initial="hidden" animate="show">
-                    <NarrativeCard id={`detail-${id}`} k={k} xray={displayXray} compact />
+                    <NarrativeCard id={`detail-${id}`} k={k} xray={displayXray} compact court={k === 'atk' ? court : undefined} />
                   </motion.div>
                 ) : null
               })}
@@ -240,7 +242,7 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
             {order.map((id, i) => (
             <motion.div key={id} variants={riseInView} custom={i} initial="hidden" whileInView="show" viewport={viewport}>
               <SectionShell id={id} index={i + 1} title={terms.sections[id]}>
-                <SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} onAiSummaryDelta={handleSummaryDelta} onAiMeta={handleInsightMeta} />
+                <SectionBody id={id} xray={displayXray} health={health} sentiment={sentiment} sentimentLoading={sentimentLoading} sentimentSlow={sentimentSlow} court={court} onAiSummaryDelta={handleSummaryDelta} onAiMeta={handleInsightMeta} />
               </SectionShell>
             </motion.div>
             ))}
@@ -266,6 +268,7 @@ function SectionBody({
   sentiment,
   sentimentLoading,
   sentimentSlow,
+  court,
   onAiSummaryDelta,
   onAiMeta,
 }: {
@@ -275,25 +278,35 @@ function SectionBody({
   sentiment?: import('@/lib/types').SentimentSnapshot
   sentimentLoading: boolean
   sentimentSlow: boolean
+  court: CourtSearchResult | null
   onAiSummaryDelta?: (text: string) => void
   onAiMeta?: (meta: { model: string; generatedAt: string }) => void
 }) {
   if (health && id === 'evidence') return <MissingEvidencePanel health={health} />
   if (health && id === 'financial') return health.years.length ? <FinancialSection xray={xray} health={health} /> : <MissingMetric label="该企业的完整年度财务报表" />
   if (health && id === 'equity') return <MissingMetric label="该企业的完整股权结构与控制关系" />
-  if (health && id === 'legal') return <MissingMetric label="该企业的完整司法与执行记录" />
+  if (health && id === 'legal') return <LegalSection xray={xray} court={court} />
   if (health && id === 'sentiment') return <MissingMetric label="可核实的舆情记录" />
   if (health && id === 'network') return <MissingMetric label="关联实体与控制关系" />
   if (health && id === 'ai') return <MissingMetric label="足够支撑 AI 分析的证据" />
   switch (id) {
     case 'financial': return <FinancialSection xray={xray} />
     case 'equity': return <EquitySection xray={xray} />
-    case 'legal': return <LegalSection xray={xray} />
+    case 'legal': return <LegalSection xray={xray} court={court} />
     case 'sentiment': return <SentimentSection xray={xray} snapshot={sentiment} loading={sentimentLoading} slow={sentimentSlow} />
     case 'network': return <NetworkSection xray={xray} />
     case 'evidence': return <EvidenceSection xray={xray} />
     case 'ai': return <AiInsightCard reportId={xray.id} companyName={xray.name} onSummaryDelta={onAiSummaryDelta} onMeta={onAiMeta} />
   }
+}
+
+function CourtPreview({ result }: { result: CourtSearchResult | null }) {
+  const label = !result ? '法院公告网：正在检索…' :
+    result.historical && result.records.length === 0 ? '法院公告网：仅有历史快照，当前公告待复核' :
+    result.status === 'available' || result.status === 'partial' ? `法院公告网近 12 个月：${result.records.length} 条名称匹配公告${result.historical ? '（历史抓取，部分结果）' : result.status === 'partial' ? '（部分结果）' : ''}` :
+    result.status === 'empty' ? '法院公告网近 12 个月：未匹配到公告' :
+    result.status === 'identity_unverified' ? '法院公告网：公司全称待核实' : '法院公告网：暂无法读取'
+  return <p className="mb-3 text-xs text-slate-400">{label}；公告不等于案件数。</p>
 }
 
 function MissingMetric({ label }: { label: string }) {

@@ -3,11 +3,12 @@ import { LawsuitHeatmap } from '../LawsuitHeatmap'
 import { RiskTimeline } from '../RiskTimeline'
 import { DetailTable } from './DataTable'
 import { AnnouncementList } from './AnnouncementList'
+import { CourtAnnouncementList } from './CourtAnnouncementList'
 import { announcementsFor } from './announcement-split'
 import { formatWan } from '@/lib/utils'
-import type { CompanyXRay } from '@/lib/types'
+import type { CompanyXRay, CourtSearchResult } from '@/lib/types'
 
-export function LegalSection({ xray }: { xray: CompanyXRay }) {
+export function LegalSection({ xray, court }: { xray: CompanyXRay; court?: CourtSearchResult | null }) {
   const detail = xray.detail
   const available = xray.atk.available !== false
   const lawsuits = detail?.lawsuits ?? []
@@ -23,9 +24,10 @@ export function LegalSection({ xray }: { xray: CompanyXRay }) {
         </div>
       ) : (
         <div className="rounded-btn border border-warn/40 bg-warn/5 px-4 py-3 text-sm text-slate-300">
-          司法数据暂未接入，无法判断是否存在诉讼、被执行或失信记录；下方仅保留已获取的公告线索，需结合原始公告继续核查。
+          诉讼、被执行及失信的核实数据暂未接入；下方展示法院公告网与公司披露的公告线索，需结合原始记录继续核查。
         </div>
       )}
+      <CourtAnnouncementList result={court ?? null} />
       <LawsuitHeatmap timeline={xray.timeline} available={available} height={220} />
       <div>
         <h4 className="mb-2 font-mono text-[11px] tracking-widest text-slate-500">诉讼明细</h4>

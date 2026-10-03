@@ -64,6 +64,32 @@ export interface Execution {
   status: string
 }
 
+/** 人民法院公告网公开公告；名称命中是核查线索，不等同于已核实的案件或执行记录。 */
+export interface CourtAnnouncement {
+  id: string
+  source: '人民法院公告网'
+  date: string // 公告发布日期 YYYY-MM-DD
+  type: string
+  party: string
+  publisher: string // 法院或其他发布机构，不能一律称为法院
+  title: string
+  summary: string
+  url: string
+}
+
+export interface CourtSearchResult {
+  status: 'available' | 'empty' | 'partial' | 'blocked' | 'unavailable' | 'identity_unverified'
+  queryName: string | null
+  from: string // 近 12 个月起点，含当日
+  to: string // 查询截止日，含当日
+  fetchedAt: string
+  records: CourtAnnouncement[]
+  totalReported: number | null // 来源报告的名称搜索结果数；不等于案件数
+  inspected: number // 本次读取的列表条数
+  historical?: boolean // 来源受限时展示的旧快照，未完成本次实时复核
+  message?: string
+}
+
 export interface SentimentItem {
   date: string
   tone: number // -10 ~ +10
