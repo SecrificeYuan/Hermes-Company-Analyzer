@@ -94,14 +94,9 @@ export function ChatWindow({
     inputRef.current?.focus()
   }
 
-  const send = async (text: string) => {
-    const q = text.trim()
-    if (!q || busy) return
+  /** 跑一轮 Agent：apiMessages 为送入 /api/chat 的完整消息序列（末条须为 user） */
+  const runTurn = async (apiMessages: ChatMessage[]) => {
     setBusy(true)
-    setInput('')
-    setMsgs((prev) => [...prev, { role: 'user', text: q }])
-
-    const apiMessages: ChatMessage[] = [...thread.messages, { role: 'user', content: q }]
     let aiText = ''
 
     const fail = (msg: string) => {
@@ -212,6 +207,26 @@ export function ChatWindow({
       onThreadUpdate(updated)
     }
   }
+
+  const send = async (text: string) => {
+    const q = text.trim()
+    if (!q || busy) return
+    setInput('')
+    setMsgs((prev) => [...prev, { role: 'user', text: q }])
+    await runTurn([...thread.messages, { role: 'user', content: q }])
+  }
+
+  // 首页新开会话只落了首条 user 消息，挂载后自动补跑 AI 回复；StrictMode 双跑用 ref 挡住
+  const autoRan = useRef(false)
+  useEffect(() => {
+    if (autoRan.current) return
+    autoRan.current = true
+    const last = thread.messages[thread.messages.length - 1]
+    if (last?.role === 'user') {
+      void runTurn(thread.messages)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <>
