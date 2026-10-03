@@ -190,7 +190,8 @@ export function ChatWindow({
           }
           const next = [...prev]
           if (next[idx].role === 'assistant' && next[idx].text === '') {
-            if (mode === 'remove' || sawCard) next.splice(idx, 1)
+            if (mode === 'remove') next.splice(idx, 1)
+            else if (sawCard) next[idx] = { role: 'assistant', text: '（这轮的口播总结没能生成出来，点上面的报告卡看完整 X 光与证据链；也可以直接继续追问。）' }
             else next[idx] = { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }
           }
           return next
@@ -216,10 +217,17 @@ export function ChatWindow({
             appendToAi(ev.text)
           } else if (ev.type === 'tool_start') {
             finishAi('remove')
-            setMsgs((prev) => [...prev, { role: 'tool', label: ev.label ?? ev.name ?? '检索工具', name: ev.name }])
+            setMsgs((prev) => {
+              const next: UiMsg[] = [...prev, { role: 'tool', label: ev.label ?? ev.name ?? '检索工具', name: ev.name }]
+              // 工具执行期间也保持尾部有「正在输出」占位（X 光约 6 秒，不能空白）
+              if (pendingAiRef.current < 0) {
+                pendingAiRef.current = next.length
+                next.push({ role: 'assistant', text: '' })
+              }
+              return next
+            })
           } else if (ev.type === 'tool_end') {
-            // 标记最近一条未完成的工具行：停动画、变静态；并在末尾补「正在输出」占位气泡
-            // （X 光出片到首个 delta 之间模型在组织语言，不能让用户对着空白等）
+            // 标记最近一条未完成的工具行：停动画、变静态（占位气泡由 tool_start 续上，此处不动）
             setMsgs((prev) => {
               const next = [...prev]
               for (let i = next.length - 1; i >= 0; i--) {
@@ -228,10 +236,6 @@ export function ChatWindow({
                   next[i] = { ...item, done: true }
                   break
                 }
-              }
-              if (pendingAiRef.current < 0) {
-                pendingAiRef.current = next.length
-                next.push({ role: 'assistant', text: '' })
               }
               return next
             })
