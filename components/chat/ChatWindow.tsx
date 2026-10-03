@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Copy, Pencil, Send, Trash2 } from 'lucide-react'
+import { Copy, HeartPulse, Pencil, ScanLine, Search, Send, ShieldCheck, Trash2, Wrench, type LucideIcon } from 'lucide-react'
 import { addChatThread, type ChatMessage, type ChatThread } from '@/lib/chat-history'
 import { ReportCard, type ReportCardData } from '@/components/chat/ReportCard'
 import { Markdown } from '@/components/chat/Markdown'
@@ -9,7 +9,7 @@ import { Markdown } from '@/components/chat/Markdown'
 type UiMsg =
   | { role: 'user'; text: string }
   | { role: 'assistant'; text: string }
-  | { role: 'tool'; label: string }
+  | { role: 'tool'; label: string; name?: string }
   | { role: 'card'; card: ReportCardData }
 
 interface SseEvent {
@@ -19,6 +19,14 @@ interface SseEvent {
   label?: string
   message?: string
   reportCard?: ReportCardData
+}
+
+/** 每个工具的专属图标（与 lib/chat/agent.ts 的 TOOL_LABELS 对应） */
+const TOOL_ICONS: Record<string, LucideIcon> = {
+  suggest_companies: Search,
+  confirm_company: ShieldCheck,
+  run_xray: ScanLine,
+  run_health_check: HeartPulse,
 }
 
 export function ChatWindow({
@@ -186,7 +194,7 @@ export function ChatWindow({
             appendToAi(ev.text)
           } else if (ev.type === 'tool_start') {
             finishAi('remove')
-            setMsgs((prev) => [...prev, { role: 'tool', label: ev.label ?? ev.name ?? '检索工具' }])
+            setMsgs((prev) => [...prev, { role: 'tool', label: ev.label ?? ev.name ?? '检索工具', name: ev.name }])
           } else if (ev.type === 'report_card' && ev.reportCard) {
             setMsgs((prev) => [...prev, { role: 'card', card: ev.reportCard as ReportCardData }])
           } else if (ev.type === 'error') {
@@ -294,9 +302,17 @@ export function ChatWindow({
               </div>
             </div>
           ) : m.role === 'tool' ? (
-            <div key={i} className="flex justify-start">
-              <span className="font-mono text-xs text-slate-500">⚙ {m.label}</span>
-            </div>
+            (() => {
+              const Icon = (m.name && TOOL_ICONS[m.name]) || Wrench
+              return (
+                <div key={i} className="flex justify-start">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-ink-edge/60 bg-ink-card/40 px-3.5 py-1.5">
+                    <Icon className="h-3.5 w-3.5 animate-spin text-neon [animation-duration:2s]" />
+                    <span className="font-mono text-[11px] tracking-wide text-slate-400">{m.label}</span>
+                  </span>
+                </div>
+              )
+            })()
           ) : (
             <div key={i} className="flex justify-start">
               <ReportCard card={m.card} />
