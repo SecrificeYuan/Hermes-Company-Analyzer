@@ -18,7 +18,7 @@ export default function HomePage() {
   const router = useRouter()
   const [history, setHistory] = useState<SearchRecord[]>(() => getSearchHistory())
   const [scanning, setScanning] = useState<{ id: string; name: string } | null>(null)
-  const [queryMode, setQueryMode] = useState<'search' | 'filter' | 'chat'>('search')
+  const [queryMode, setQueryMode] = useState<'search' | 'filter' | 'chat'>('chat')
   const [llmOk, setLlmOk] = useState(true)
 
   useEffect(() => {
@@ -64,6 +64,14 @@ export default function HomePage() {
           <div role="group" aria-label="查询方式" className="mx-auto mt-6 inline-grid grid-cols-3 rounded-btn border border-ink-edge bg-ink-card p-1">
             <button
               type="button"
+              aria-pressed={queryMode === 'chat'}
+              onClick={() => setQueryMode('chat')}
+              className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${queryMode === 'chat' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
+            >
+              对话
+            </button>
+            <button
+              type="button"
               aria-pressed={queryMode === 'search'}
               onClick={() => setQueryMode('search')}
               className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${queryMode === 'search' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
@@ -77,14 +85,6 @@ export default function HomePage() {
               className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${queryMode === 'filter' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
             >
               筛选
-            </button>
-            <button
-              type="button"
-              aria-pressed={queryMode === 'chat'}
-              onClick={() => setQueryMode('chat')}
-              className={`min-w-28 rounded-btn px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon ${queryMode === 'chat' ? 'bg-neon text-ink-bg' : 'text-slate-400 hover:text-slate-100'}`}
-            >
-              对话
             </button>
           </div>
           {queryMode === 'search' && (

@@ -236,11 +236,10 @@ export function MetaStrip({ xray, health }: { xray: CompanyXRay; health?: Compan
         <Button asChild size="sm" variant="outline">
           <Link href={xray.stockCode ? `/compare?a=${xray.stockCode}` : '/compare'}><GitCompareArrows className="h-3.5 w-3.5" /> 双公司对比</Link>
         </Button>
-        <Button
-          size="sm" variant="outline"
-          onClick={() => document.getElementById('ai')?.scrollIntoView({ behavior: 'smooth' })}
-        >
-          <Bot className="h-3.5 w-3.5" /> AI 解读
+        <Button asChild size="sm" variant="outline">
+          <Link href={`/chat?report=${encodeURIComponent(xray.id)}&name=${encodeURIComponent(xray.name)}`}>
+            <Bot className="h-3.5 w-3.5" /> 与 AI 聊一聊
+          </Link>
         </Button>
         <ShareCard xray={xray} />
       </div>

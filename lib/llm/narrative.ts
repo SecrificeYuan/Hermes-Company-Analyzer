@@ -1,11 +1,40 @@
-// 叙事层：亮灯后的「下一步」行动建议（NextSteps）。
+// 叙事层：行动建议 + 报告页/对比页 AI 点评的消息构造与解析守卫。
 // 铁律：不得编造输入数据外的数字；资料不足必须明说；caveat 必须含「历史不代表未来」。
-import type { CompanyXRay } from '@/lib/types'
+// 守卫：全数字溯源（百分数/整数/小数都必须出自喂料事实）。
+import type { CompanyXRay, NarrativeKey } from '@/lib/types'
 import type { ChatMessage } from './client'
+import {
+  buildFactPayload,
+  buildSignalPayload,
+  assertNumbersTraceable,
+  assertNumbersTraceableAny,
+} from './facts'
 
-const LAMP_LABEL: Record<CompanyXRay['overallRisk'], string> = {
+export const LAMP_LABEL: Record<CompanyXRay['overallRisk'], string> = {
   green: '绿灯', yellow: '黄灯', red: '红灯',
 }
+
+/** 全量喂料 user payload（点评/对比/行动建议共用骨架） */
+export function buildUserPayload(xray: CompanyXRay): Record<string, unknown> {
+  return {
+    公司: xray.name,
+    行业: xray.industry,
+    灯色: LAMP_LABEL[xray.overallRisk],
+    血条: `${xray.hp.score}%`,
+    护甲: `${xray.def.score}%`,
+    风险评分: xray.riskScore,
+    命中信号: buildSignalPayload(xray),
+    维度事实: buildFactPayload(xray),
+    模板结论: xray.verdict,
+    数据基准日: xray.asOf,
+  }
+}
+
+const BASE_RULES = [
+  '铁律一：不得出现输入数据之外的任何数字（百分数/整数/小数均须可溯源），不确定就说「资料不足，无法确认」。',
+  '铁律二：资料不足时明说，不得编造。',
+  '铁律三：直接对读者说话，不得出现「模板」「命中信号」「输入数据」等内部词汇；没有命中信号就说「未发现异常信号」。',
+]
 
 /** 构造行动建议的完整消息序列（system 立规矩 + user 喂面板数据）。 */
 export function buildActionAdviceMessages(xray: CompanyXRay, scenario: string): ChatMessage[] {
@@ -19,53 +48,118 @@ export function buildActionAdviceMessages(xray: CompanyXRay, scenario: string): 
       : xray.overallRisk === 'yellow'
         ? '黄灯语义：给出怎么付更安全的具体做法（限额、分期、留证据等）。'
         : '红灯语义：给出止损与替代方案，并明确哪些动作不要做。',
-    '铁律一：不得出现输入数据之外的任何数字（尤其百分数），不确定就说「资料不足，无法确认」。',
-    '铁律二：资料不足时明说，不得编造。',
-    '铁律三：caveat 必须包含「历史不代表未来」。',
-    '铁律四：直接对读者说话，不得出现「模板」「命中信号」「输入数据」等内部词汇；没有命中信号就说「未发现异常信号」，不得反问自己拿到的资料。',
+    '行动项必须引用「维度事实」与「命中信号」中的具体数据点，禁止泛泛而谈。',
+    ...BASE_RULES,
+    '铁律四：caveat 必须包含「历史不代表未来」。',
   ].join('\n')
-
-  const user = JSON.stringify({
-    公司: xray.name,
-    行业: xray.industry,
-    灯色: lamp,
-    场景: scenario,
-    血条: `${xray.hp.score}%`,
-    护甲: `${xray.def.score}%`,
-    命中信号: xray.hiddenStatus.length
-      ? xray.hiddenStatus.map((h) => `${h.label}（${h.severity}）：${h.description}`)
-      : '未发现异常信号',
-    维度事实: dimensionFacts(xray),
-    模板结论: xray.verdict,
-    模板建议: xray.advice,
-    数据基准日: xray.asOf,
-  })
 
   return [
     { role: 'system', content: system },
-    { role: 'user', content: user },
+    { role: 'user', content: JSON.stringify({ ...buildUserPayload(xray), 场景: scenario }) },
   ]
 }
 
-/** 五维各自的实测事实（未取回的数据明确标注，不得当作零风险解读）。 */
-export function dimensionFacts(xray: CompanyXRay): Record<string, string> {
-  const riskyNodes = xray.graph.nodes.filter((n) => n.risk >= 60).length
-  return {
-    财务健康: `评分 ${xray.hp.score}/100（${xray.hp.label}），资产负债率 ${xray.hp.debtRatio}%，最近一年经营现金流 ${xray.hp.cashFlow} 万元`,
-    股权质押: `评分 ${xray.def.score}/100（${xray.def.label}），质押比例 ${xray.def.pledgeRatio}%，资产覆盖率 ${xray.def.assetCoverage}%`,
-    涉诉: xray.atk.available === false
-      ? '司法数据尚未取回，本维度不做判断'
-      : `评分 ${xray.atk.score}/100（${xray.atk.label}），涉诉 ${xray.atk.lawsuitCount} 件，被执行金额 ${xray.atk.executionAmount} 万元`,
-    舆情: xray.morale.available === false
-      ? '舆情数据尚未独立取回，本维度不做判断'
-      : `评分 ${xray.morale.score}/100（${xray.morale.label}），平均情绪 ${xray.morale.avgTone}/10`,
-    关联网络: `关联实体 ${xray.graph.nodes.length} 个、关系 ${xray.graph.links.length} 条，其中高风险实体 ${riskyNodes} 个`,
+// 报告页 AI 点评（/api/report-ai）：summary 流式长文 / lightReason 一句话 / sectionNotes 五维短评。
+// 短字段 JSON 完成即推；summary markdown 真流式，无 JSON 包裹。
+export type InsightField = 'summary' | 'lightReason'
+
+export interface InsightSectionNotes {
+  hp?: string
+  def?: string
+  atk?: string
+  morale?: string
+  network?: string
+}
+
+const INSIGHT_FIELD_SPEC: Record<InsightField, string> = {
+  summary:
+    '直接输出 markdown 正文（不要代码围栏、不要 JSON 包裹、不要小标题）。200~350 字整体点评：说人话，面向付款前核对的非专业读者——这家公司能不能放心打交道、最需要注意哪一点、建议怎么做。必须引用「维度事实」与「命中信号」中的具体数据，禁止泛泛而谈。结尾必须包含「历史不代表未来」。',
+  lightReason:
+    '只输出一个 JSON 对象 {"lightReason": string}。lightReason 是一句话（不超过 40 字），直白解释为什么是这盏灯，不堆术语、不出现数字。',
+}
+
+/** 构造报告页 AI 点评某一段的完整消息序列。 */
+export function buildInsightMessages(xray: CompanyXRay, field: InsightField): ChatMessage[] {
+  const lamp = LAMP_LABEL[xray.overallRisk]
+  const system = [
+    '你是严谨的金融风险提示助手，给非专业读者写人话点评。',
+    `用户场景是「付款前核对」，当前灯色为${lamp}。`,
+    INSIGHT_FIELD_SPEC[field],
+    ...BASE_RULES,
+  ].join('\n')
+
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: JSON.stringify(buildUserPayload(xray)) },
+  ]
+}
+
+/** sectionNotes 独立构造：五维短评一次性 JSON（并行生成用） */
+export function buildSectionNotesMessages(xray: CompanyXRay): ChatMessage[] {
+  const lamp = LAMP_LABEL[xray.overallRisk]
+  const system = [
+    '你是严谨的金融风险提示助手，给非专业读者写人话点评。',
+    `用户场景是「付款前核对」，当前灯色为${lamp}。`,
+    '只输出一个 JSON 对象 {"sectionNotes": object}，object 的键只能是 hp（财务健康）/ def（股权质押）/ atk（涉诉）/ morale（舆情）/ network（关联网络），每个值是 80~150 字的分维度短评，人话、引用该维度「维度事实」中的具体数据点，只点该维度最值得注意的一点；「维度事实」标注「尚未取回」的值才写「资料不足，无法确认」，其余维度禁止写「资料不足」。',
+    ...BASE_RULES,
+  ].join('\n')
+
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: JSON.stringify(buildUserPayload(xray)) },
+  ]
+}
+
+/** 解析并守卫某一段点评：JSON 结构校验 + 全数字溯源校验。 */
+export function parseInsight(
+  field: InsightField,
+  raw: string | null,
+  xray: CompanyXRay,
+): string | null {
+  if (!raw) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
   }
+  if (!parsed || typeof parsed !== 'object') return null
+  const obj = parsed as Record<string, unknown>
+  const v = obj[field]
+  if (typeof v !== 'string' || !v.trim()) return null
+  const t = v.trim()
+  if (!assertNumbersTraceable(t, xray)) return null
+  return t
+}
+
+/** 解析五维短评：每维独立做全数字溯源，坏维度丢弃不拖垮其余。 */
+export function parseSectionNotes(
+  raw: string | null,
+  xray: CompanyXRay,
+): InsightSectionNotes | null {
+  if (!raw) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!parsed || typeof parsed !== 'object') return null
+  const notes = (parsed as Record<string, unknown>).sectionNotes
+  if (!notes || typeof notes !== 'object') return null
+  const out: InsightSectionNotes = {}
+  for (const k of ['hp', 'def', 'atk', 'morale', 'network'] as const) {
+    const v = (notes as Record<string, unknown>)[k]
+    if (typeof v !== 'string' || !v.trim()) continue
+    const t = v.trim()
+    if (!assertNumbersTraceable(t, xray)) continue
+    out[k] = t
+  }
+  return Object.keys(out).length ? out : null
 }
 
 /**
- * 解析并守卫 LLM 返回的行动建议。
- * xray 传入时启用百分数可溯源校验：条目中出现的百分数必须能在面板数据中找到出处。
+ * 解析并守卫行动建议。xray 传入时启用全数字溯源校验。
  */
 export function parseActionAdvice(
   raw: string,
@@ -83,12 +177,11 @@ export function parseActionAdvice(
   const scenario = obj.scenario
   const items = obj.items
   if (typeof scenario !== 'string' || !scenario.trim()) return null
-  // caveat 缺失时回退诚实标注默认值（铁律三），不拒绝整体结果
   const caveat = typeof obj.caveat === 'string' && obj.caveat.trim() ? obj.caveat.trim() : '历史不代表未来'
   if (!Array.isArray(items)) return null
   if (items.length < 3 || items.length > 5) return null
   if (!items.every((it) => typeof it === 'string' && it.trim())) return null
-  if (xray && !items.every((it) => assertPercentTraceable(it as string, xray))) return null
+  if (xray && !items.every((it) => assertNumbersTraceable(it as string, xray))) return null
 
   return {
     scenario: scenario.trim(),
@@ -99,139 +192,12 @@ export function parseActionAdvice(
   }
 }
 
-/** 收集面板中可溯源的数字集合（血条/护甲分 + 命中信号证据文本中的数字）。 */
-function collectTraceableNumbers(xray: CompanyXRay): Set<string> {
-  const set = new Set<string>()
-  set.add(String(xray.hp.score))
-  set.add(String(xray.def.score))
-  // 维度事实里明喂的百分数同样是合法出处
-  set.add(String(xray.hp.debtRatio))
-  set.add(String(xray.def.pledgeRatio))
-  set.add(String(xray.def.assetCoverage))
-  for (const h of xray.hiddenStatus) {
-    for (const e of h.evidence ?? []) {
-      for (const m of String(e.detail).matchAll(/\d+(?:\.\d+)?/g)) {
-        set.add(m[0])
-      }
-    }
-  }
-  return set
-}
-
-// 报告页 AI 点评（/api/report-ai）：summary / lightReason / sectionNotes 三段独立生成，
-// 每段一个小 JSON，路由按字段完成顺序推送——首段约 2 秒内到达。
-// 铁律沿用：不编造输入数据外的数字（百分数可溯源）、资料不足明说。
-export type InsightField = 'summary' | 'lightReason' | 'sectionNotes'
-
-export interface InsightSectionNotes {
-  hp?: string
-  def?: string
-  atk?: string
-  morale?: string
-  network?: string
-}
-
-const INSIGHT_FIELD_SPEC: Record<InsightField, string> = {
-  summary:
-    '只输出一个 JSON 对象 {"summary": string}。summary 是 120 字内的整体点评：说人话，面向付款前核对的非专业读者——这家公司能不能放心打交道、最需要注意哪一点。结尾必须包含「历史不代表未来」。',
-  lightReason:
-    '只输出一个 JSON 对象 {"lightReason": string}。lightReason 是一句话（不超过 40 字），直白解释为什么是这盏灯，不堆术语、不出现数字。',
-  sectionNotes:
-    '只输出一个 JSON 对象 {"sectionNotes": object}，object 的键只能是 hp（财务健康）/ def（股权质押）/ atk（涉诉）/ morale（舆情）/ network（关联网络），每个值是 40~70 字的分维度短评，人话、只点该维度最值得注意的一点，必须基于「维度事实」里该维度的数据写；维度事实标注「尚未取回」的值才写「资料不足，无法确认」，其余维度禁止写「资料不足」。',
-}
-
-/** 构造报告页 AI 点评某一段的完整消息序列。 */
-export function buildInsightMessages(xray: CompanyXRay, field: InsightField): ChatMessage[] {
-  const lamp = LAMP_LABEL[xray.overallRisk]
-  const system = [
-    '你是严谨的金融风险提示助手，给非专业读者写人话点评。',
-    `用户场景是「付款前核对」，当前灯色为${lamp}。`,
-    INSIGHT_FIELD_SPEC[field],
-    '铁律一：不得出现输入数据之外的任何数字（尤其百分数），不确定就说「资料不足，无法确认」。',
-    '铁律二：资料不足时明说，不得编造。',
-    '铁律三：直接对读者说话，不得出现「模板」「命中信号」「输入数据」等内部词汇；没有命中信号就说「未发现异常信号」。',
-  ].join('\n')
-
-  const user = JSON.stringify({
-    公司: xray.name,
-    行业: xray.industry,
-    灯色: lamp,
-    血条: `${xray.hp.score}%`,
-    护甲: `${xray.def.score}%`,
-    命中信号: xray.hiddenStatus.length
-      ? xray.hiddenStatus.map((h) => `${h.label}（${h.severity}）`)
-      : '未发现异常信号',
-    维度事实: dimensionFacts(xray),
-    模板结论: xray.verdict,
-    数据基准日: xray.asOf,
-  })
-
-  return [
-    { role: 'system', content: system },
-    { role: 'user', content: user },
-  ]
-}
-
-/**
- * 解析并守卫某一段点评：JSON 结构校验 + 百分数可溯源校验。
- * 返回字符串（summary/lightReason）或五维短评对象（sectionNotes）；失败返回 null。
- */
-export function parseInsight(
-  field: InsightField,
-  raw: string | null,
-  xray: CompanyXRay,
-): string | InsightSectionNotes | null {
-  if (!raw) return null
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return null
-  }
-  if (!parsed || typeof parsed !== 'object') return null
-  const obj = parsed as Record<string, unknown>
-
-  if (field === 'sectionNotes') {
-    const notes = obj.sectionNotes
-    if (!notes || typeof notes !== 'object') return null
-    const out: InsightSectionNotes = {}
-    for (const k of ['hp', 'def', 'atk', 'morale', 'network'] as const) {
-      const v = (notes as Record<string, unknown>)[k]
-      if (typeof v !== 'string' || !v.trim()) continue
-      const t = v.trim()
-      if (!assertPercentTraceable(t, xray)) return null
-      out[k] = t
-    }
-    return Object.keys(out).length ? out : null
-  }
-
-  const v = obj[field]
-  if (typeof v !== 'string' || !v.trim()) return null
-  const t = v.trim()
-  if (!assertPercentTraceable(t, xray)) return null
-  return t
-}
-
-/**
- * 百分数可溯源守卫：文本中出现的每个百分数，其数字必须能在面板数据中找到出处
- * （血条/护甲分 + 命中信号证据文本中的数字）。无百分数视为通过。
- * 叙事层与 verdict 润色路径共用。
- */
+// ── 兼容导出（旧调用点 get-xray.ts 仍引用） ─────────────────────
+/** @deprecated 用 assertNumbersTraceable 替代 */
 export function assertPercentTraceable(text: string, xray: CompanyXRay): boolean {
-  return assertPercentTraceableAny(text, [xray])
+  return assertNumbersTraceable(text, xray)
 }
-
-/**
- * 跨公司版百分数可溯源守卫：文本中出现的每个百分数，其数字必须能在
- * 任一给定面板数据中找到出处（对比场景两家公司的数字均合法）。
- */
+/** @deprecated 用 assertNumbersTraceableAny 替代 */
 export function assertPercentTraceableAny(text: string, xrays: CompanyXRay[]): boolean {
-  const legal = new Set<string>()
-  for (const x of xrays) {
-    for (const n of collectTraceableNumbers(x)) legal.add(n)
-  }
-  for (const m of text.matchAll(/(\d+(?:\.\d+)?)%/g)) {
-    if (!legal.has(m[1])) return false
-  }
-  return true
+  return assertNumbersTraceableAny(text, xrays)
 }

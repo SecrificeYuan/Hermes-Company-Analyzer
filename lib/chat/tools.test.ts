@@ -1,11 +1,12 @@
 // lib/chat/tools.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { makeXray } from '@/lib/__tests__/fixtures'
 
 vi.mock('@/lib/data/eastmoney', () => ({ suggestCompanies: vi.fn() }))
 vi.mock('@/lib/data/company-discovery', () => ({ searchCompanies: vi.fn() }))
 vi.mock('@/lib/get-xray', () => ({ getXRay: vi.fn() }))
 vi.mock('@/lib/data/company-health', () => ({ findCompany: vi.fn(), getCompanyHealth: vi.fn() }))
-vi.mock('@/lib/data/health-xray', () => ({ healthToXray: vi.fn((h) => ({ ...h, __converted: true })) }))
+vi.mock('@/lib/data/health-xray', () => ({ healthToXray: vi.fn((h) => ({ ...makeXray({}), ...h })) }))
 
 import { suggestCompanies } from '@/lib/data/eastmoney'
 import { searchCompanies } from '@/lib/data/company-discovery'
@@ -16,9 +17,10 @@ import { executeTool, toolSpecs } from './tools'
 describe('lib/chat/tools', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('暴露 4 个工具且顺序固定', () => {
+  it('暴露 9 个工具且顺序固定', () => {
     expect(toolSpecs.map((t) => t.function.name)).toEqual([
       'suggest_companies', 'confirm_company', 'run_xray', 'run_health_check',
+      'get_market_quote', 'get_fund_flow', 'get_news', 'compare_companies', 'get_announcements',
     ])
   })
 
@@ -36,16 +38,20 @@ describe('lib/chat/tools', () => {
   })
 
   it('run_xray 返回报告卡快照并透传 scenario 给 getXRay', async () => {
-    vi.mocked(getXRay).mockResolvedValue({
+    vi.mocked(getXRay).mockResolvedValue(makeXray({
       id: '600519', name: '贵州茅台', overallRisk: 'green', verdict: '结论',
       hiddenStatus: [{ id: 'x', label: '老板套现', severity: 'high', description: 'd', evidence: [] }],
       asOf: '2026-10-03',
-    } as never)
+    }))
     const result = await executeTool('run_xray', { company_id: '600519', scenario: '买股票' })
     expect(result.reportCard).toMatchObject({
-      reportId: '600519', overallRisk: 'green', scenario: '买股票',
-      debuffItems: [{ id: 'x', label: '老板套现', severity: 'high', description: 'd' }],
+      reportId: '600519', overallRisk: 'green',
     })
+    expect(result.scenario).toBe('买股票')
+    // 全量化：命中信号与五维事实进回传
+    const card = result.reportCard as { 命中信号: Array<{ 信号: string }>; 五维事实: Record<string, unknown> }
+    expect(card.命中信号).toEqual([{ 信号: '老板套现', 严重度: 'high', 说明: 'd', 证据: [] }])
+    expect(card.五维事实).toBeTruthy()
     expect(vi.mocked(getXRay)).toHaveBeenCalledWith('600519', '买股票')
   })
 
@@ -58,8 +64,10 @@ describe('lib/chat/tools', () => {
     vi.mocked(findCompany).mockResolvedValue({ id: 'gym', name: 'X' } as never)
     vi.mocked(getCompanyHealth).mockResolvedValue({ id: 'gym' } as never)
     const result = await executeTool('run_health_check', { company_id: 'gym' })
-    expect((result.reportCard as Record<string, unknown>).__converted).toBe(true)
     expect(vi.mocked(getCompanyHealth)).toHaveBeenCalledWith({ id: 'gym', name: 'X' })
+    expect(result.reportCard).toMatchObject({ reportId: 'gym' })
+    expect(result.reportCard).toBeTruthy()
+    expect((result.reportCard as Record<string, unknown>).五维事实).toBeTruthy()
   })
 
   it('未知工具 → {error}', async () => {

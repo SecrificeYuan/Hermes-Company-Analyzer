@@ -78,7 +78,8 @@ export function CompareClient({ initialPick }: { initialPick: CompareSelection |
         const code = slot === 'A' ? initialPick.a : initialPick.b
         if (!code) return
         try {
-          const res = await fetch(`/api/search?q=${encodeURIComponent(code)}`)
+          // /api/search 按 6 位纯代码精确匹配；带 .SZ 等后缀时剥掉再查
+          const res = await fetch(`/api/search?q=${encodeURIComponent(code.slice(0, 6))}`)
           const data = (await res.json()) as { found: boolean; company?: ListedCompany }
           if (data.found && data.company) {
             const c = data.company

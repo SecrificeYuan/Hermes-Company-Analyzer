@@ -25,6 +25,8 @@ export function useLlmFieldStream(
     expand?: (field: string, text: string) => FieldStreamItem[] | null
     /** 某 slot 完整落地时的回调（如 summary 回填速览层） */
     onSlotDone?: (slot: string, text: string) => void
+    /** 真流式 slot 的每次增量回调（text 为当前累计全文；供速览层边生成边预览） */
+    onSlotDelta?: (slot: string, text: string) => void
   },
 ): {
   llmUp: boolean | null
@@ -40,6 +42,9 @@ export function useLlmFieldStream(
   const [meta, setMeta] = useState<FieldStreamMeta | null>(null)
 
   const queueRef = useRef<FieldStreamItem[]>([])
+  /** 真流式 slot 的累计全文（mirror of typing.full）：增量事件在 setState updater 外累加，
+   *  回调也在 updater 外触发——updater 必须纯，且在渲染期可能被 React 重复调用 */
+  const streamFullRef = useRef<Record<string, string>>({})
   const [typing, setTyping] = useState<{ slot: string; full: string; len: number } | null>(null)
   const [display, setDisplay] = useState<Record<string, string>>({})
   const [tick, setTick] = useState(0)
@@ -52,9 +57,12 @@ export function useLlmFieldStream(
   expandRef.current = options?.expand
   const onSlotDoneRef = useRef(options?.onSlotDone)
   onSlotDoneRef.current = options?.onSlotDone
+  const onSlotDeltaRef = useRef(options?.onSlotDelta)
+  onSlotDeltaRef.current = options?.onSlotDelta
 
   const regenerate = useCallback(() => {
     queueRef.current = []
+    streamFullRef.current = {}
     setDisplay({})
     setTyping(null)
     setFailed(false)
@@ -124,7 +132,7 @@ export function useLlmFieldStream(
           for (const block of blocks) {
             const line = block.trim()
             if (!line.startsWith('data:')) continue
-            let ev: { type?: string; field?: string; text?: string; model?: string; generatedAt?: string; message?: string }
+            let ev: { type?: string; field?: string; text?: string; delta?: string; done?: boolean; model?: string; generatedAt?: string; message?: string; cached?: boolean; hasSummary?: boolean }
             try {
               ev = JSON.parse(line.slice(5).trim())
             } catch {
@@ -138,6 +146,19 @@ export function useLlmFieldStream(
               } else {
                 queueRef.current.push({ slot: ev.field, text: ev.text })
               }
+              setTick((t) => t + 1)
+            } else if (ev.type === 'stream' && ev.field && typeof ev.delta === 'string') {
+              // 真流式增量：在 updater 外累加全文并触发回调，setTyping 只负责打字机推进（updater 必须纯）
+              receivedRef.current = true
+              const field = ev.field
+              const full = (streamFullRef.current[field] ?? '') + ev.delta
+              streamFullRef.current = { ...streamFullRef.current, [field]: full }
+              onSlotDeltaRef.current?.(field, full)
+              setTyping((t) =>
+                t && t.slot === field
+                  ? { ...t, full }
+                  : { slot: field, full, len: 0 },
+              )
               setTick((t) => t + 1)
             } else if (ev.type === 'done') {
               doneRef.current = true

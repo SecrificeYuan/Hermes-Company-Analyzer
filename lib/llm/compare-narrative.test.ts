@@ -19,13 +19,12 @@ const b = {
 describe('lib/llm/compare-narrative', () => {
   beforeEach(() => { vi.resetModules() })
 
-  it('buildCompareMessages：system 含双方公司名、JSON 要求与铁律；user 喂双方维度事实', async () => {
+  it('buildCompareMessages：system 含双方公司名、要求与铁律；user 喂双方维度事实', async () => {
     const { buildCompareMessages } = await import('./compare-narrative')
     const msgs = buildCompareMessages(a, b, 'summary')
     const sys = msgs.find((m) => m.role === 'system')!.content!
     expect(sys).toContain('甲公司')
     expect(sys).toContain('乙公司')
-    expect(sys).toContain('JSON')
     expect(sys).toContain('历史不代表未来')
     const user = msgs.find((m) => m.role === 'user')!.content!
     expect(user).toContain('维度事实')
@@ -40,14 +39,14 @@ describe('lib/llm/compare-narrative', () => {
       .toBe('付款给乙公司更稳')
   })
 
-  it('parseCompareInsight：dimensionNotes 五维合法返回对象，坏键被丢弃', async () => {
-    const { parseCompareInsight } = await import('./compare-narrative')
+  it('parseCompareDimensionNotes：五维合法返回对象，坏键被丢弃', async () => {
+    const { parseCompareDimensionNotes } = await import('./compare-narrative')
     const raw = JSON.stringify({ dimensionNotes: { hp: '甲血条仅 12%，乙 88% 远稳', def: '乙护甲更高', junk: 'x' } })
-    const notes = parseCompareInsight('dimensionNotes', raw, a, b)
+    const notes = parseCompareDimensionNotes(raw, a, b)
     expect(notes).toEqual({ hp: '甲血条仅 12%，乙 88% 远稳', def: '乙护甲更高' })
   })
 
-  it('跨公司百分数守卫：任一家公司面板里的数字均合法，无中生有的百分数拒绝', async () => {
+  it('跨公司数字守卫：任一家公司面板里的数字均合法，无中生有的数字拒绝', async () => {
     const { parseCompareInsight } = await import('./compare-narrative')
     // 12 出自甲、88 出自乙 → 均通过
     const ok = JSON.stringify({ verdict: '甲 12% 对乙 88%，乙稳' })

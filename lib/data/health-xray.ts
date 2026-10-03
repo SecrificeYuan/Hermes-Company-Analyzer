@@ -18,7 +18,10 @@ export function healthToXray(report: CompanyHealth): CompanyXRay {
   const atkScore = metrics.lawsuitAnnouncements === null ? 50 : clamp(metrics.lawsuitAnnouncements * 5 + Math.log10(1 + Math.max(0, metrics.executionAnnouncements ?? 0)) * 10)
   const risk = report.financialRisk === 'high' ? 'red' : report.financialRisk === 'low' ? 'green' : 'yellow'
   const riskScore = report.financialRisk === 'high' ? 75 : report.financialRisk === 'low' ? 35 : 50
-  const sourceStatuses = report.sources.map((source) => ({ name: 'public_web' as const, ok: source.state === 'ok', fallback: false, latencyMs: 0 }))
+  // report.sources 是多个内部抓取引擎（state 各自 ok/failed），聚合为一枚 public_web 角标：
+  // 任一引擎命中即 ok；不聚合会产出同名 key 让 React 报 duplicate key
+  const anyOk = report.sources.some((source) => source.state === 'ok')
+  const sourceStatuses = [{ name: 'public_web' as const, ok: anyOk, fallback: false, latencyMs: 0 }]
   return {
     id: company.id, name: company.fullName ?? company.name, industry: company.industry ?? '行业待核实', generatedAt: new Date().toISOString(), asOf: report.asOf,
     overallRisk: risk, riskScore,

@@ -185,6 +185,38 @@ export function FilterPanel() {
     if (mode === 'lite') setLite(emptyLite)
     else setPro(emptyPro)
   }
+
+  // ── 自然语言筛选：LLM 翻译成 ScreeningRequest → 回填面板可见可改 ──
+  const [nlQuery, setNlQuery] = useState('')
+  const [nlLoading, setNlLoading] = useState(false)
+  const [nlError, setNlError] = useState('')
+  const applyNaturalLanguage = async () => {
+    const q = nlQuery.trim()
+    if (!q) return
+    setNlLoading(true)
+    setNlError('')
+    clearResult()
+    try {
+      const res = await fetch('/api/screen-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q }),
+      })
+      const data = await res.json() as { ok?: boolean; request?: { discovery: DiscoveryFilters; mode: FilterMode; filters: unknown }; error?: string }
+      if (!res.ok || !data.ok || !data.request) {
+        throw new Error(data.error ?? '翻译失败，请换个说法或直接填条件')
+      }
+      const req = data.request
+      setDiscovery(req.discovery)
+      setMode(req.mode)
+      if (req.mode === 'lite') setLite({ ...emptyLite, ...(req.filters as Partial<LiteFilters>) })
+      else setPro({ ...emptyPro, ...(req.filters as Partial<ProFilters>) })
+    } catch (cause) {
+      setNlError(cause instanceof Error ? cause.message : '翻译失败，请换个说法或直接填条件')
+    } finally {
+      setNlLoading(false)
+    }
+  }
   const search = async () => {
     requestRef.current?.abort()
     const controller = new AbortController()
@@ -211,6 +243,30 @@ export function FilterPanel() {
 
   return (
     <section aria-label="条件筛选" className="pointer-events-auto relative z-10 w-full max-w-3xl rounded-btn border border-ink-edge bg-[#101625]/60 transition-colors duration-200 hover:bg-[#101625] hover:shadow-2xl">
+      {/* 自然语言筛选：LLM 翻译大白话 → 回填下方条件面板 */}
+      <div className="border-b border-ink-edge px-5 py-3.5 sm:px-7">
+        <div className="flex gap-2">
+          <input
+            value={nlQuery}
+            maxLength={200}
+            placeholder="用大白话描述你要找的公司，如「负债率低、现金流好的制造业上市公司」"
+            className={inputClass}
+            onChange={(e) => { setNlQuery(e.target.value); setNlError('') }}
+            onKeyDown={(e) => { if (e.key === 'Enter') applyNaturalLanguage() }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={nlLoading || !nlQuery.trim()}
+            onClick={applyNaturalLanguage}
+            className="h-10 shrink-0 px-4"
+          >
+            {nlLoading ? '翻译中…' : 'AI 翻译'}
+          </Button>
+        </div>
+        {nlError && <p className="mt-1.5 text-xs text-danger">{nlError}</p>}
+        <p className="mt-1.5 font-mono text-[10px] text-slate-500">AI 会把你的话翻译成下方筛选条件（可见可改），确认后再查询</p>
+      </div>
       <div className="flex flex-col gap-4 border-b border-ink-edge px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
         <div className="inline-grid w-full grid-cols-2 rounded-btn bg-[#0b1020] p-1 sm:w-auto" role="tablist" aria-label="筛选模式">
           <button

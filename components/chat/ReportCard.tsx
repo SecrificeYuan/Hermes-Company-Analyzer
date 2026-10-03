@@ -7,7 +7,7 @@ export interface ReportCardData {
   name: string
   overallRisk: 'green' | 'yellow' | 'red'
   verdict: string
-  debuffItems: { id: string; label: string; severity: string; description: string }[]
+  debuffItems?: { id: string; label: string; severity: string; description: string }[]
   asOf: string
   scenario?: string
 }
@@ -21,6 +21,7 @@ const LIGHT: Record<string, { emoji: string; name: string }> = {
 /** 对话流内的迷你报告卡：克制信息层级，只给结论与行动项 */
 export function ReportCard({ card }: { card: ReportCardData }) {
   const light = LIGHT[card.overallRisk] ?? LIGHT.yellow
+  const debuffItems = Array.isArray(card.debuffItems) ? card.debuffItems : []
 
   return (
     <div className="glass-card w-full max-w-md px-5 py-4">
@@ -34,9 +35,9 @@ export function ReportCard({ card }: { card: ReportCardData }) {
 
       <p className="mt-3 text-sm leading-relaxed text-slate-300">{card.verdict}</p>
 
-      {card.debuffItems.length > 0 && (
+      {debuffItems.length > 0 && (
         <div className="mt-3 space-y-2">
-          {card.debuffItems.map((d) => (
+          {debuffItems.map((d) => (
             <div key={d.id} className="rounded-btn bg-black/30 px-3 py-2 text-xs leading-relaxed text-slate-300">
               <span className="font-semibold text-slate-100">{d.label}</span>
               <span className="text-slate-400"> — {d.description}</span>
