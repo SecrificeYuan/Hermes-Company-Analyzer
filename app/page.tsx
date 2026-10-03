@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { History } from 'lucide-react'
 import { NetworkBg } from '@/components/home/NetworkBg'
@@ -16,12 +17,15 @@ import type { ListedCompany } from '@/lib/data/eastmoney'
 
 export default function HomePage() {
   const router = useRouter()
-  const [history, setHistory] = useState<SearchRecord[]>(() => getSearchHistory())
+  // localStorage is client-only; load it after hydration so the server and
+  // first client render produce the same markup.
+  const [history, setHistory] = useState<SearchRecord[]>([])
   const [scanning, setScanning] = useState<{ id: string; name: string } | null>(null)
   const [queryMode, setQueryMode] = useState<'search' | 'filter' | 'chat'>('search')
   const [llmOk, setLlmOk] = useState(true)
 
   useEffect(() => {
+    setHistory(getSearchHistory())
     fetch('/api/llm-status')
       .then((res) => res.json())
       .then((data: { available?: boolean }) => setLlmOk(data.available === true))
@@ -57,10 +61,18 @@ export default function HomePage() {
           animate={{ opacity: 1, y: 0 }}
           className={`pointer-events-auto shrink-0 text-center ${queryMode === 'filter' ? 'mt-10 mb-6' : 'mb-10'}`}
         >
+          <Image
+            src="/hermes-logo.png"
+            alt="HERMES"
+            width={320}
+            height={271}
+            priority
+            className="mx-auto mb-5 h-auto w-28 object-contain sm:w-32"
+          />
           <div className="mb-4 font-mono text-[11px] tracking-[0.35em] text-neon/80">
             HERMES SYSTEM ONLINE
           </div>
-          <h1 className="text-5xl font-bold tracking-tight text-slate-50">公司透视</h1>
+          <h1 className="text-5xl font-bold tracking-tight text-slate-50">HERMES Company Analyzer</h1>
           <div role="group" aria-label="查询方式" className="mx-auto mt-6 inline-grid grid-cols-3 rounded-btn border border-ink-edge bg-ink-card p-1">
             <button
               type="button"
@@ -88,7 +100,7 @@ export default function HomePage() {
             </button>
           </div>
           {queryMode === 'search' && (
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
+            <p className="mt-4 text-sm leading-relaxed text-slate-400">
               输入公司名，30 秒生成一张公司透视报告 —— 财务、司法、舆情、股权，散落线索一次看清。
             </p>
           )}

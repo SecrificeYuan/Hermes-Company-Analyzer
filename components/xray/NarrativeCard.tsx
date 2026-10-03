@@ -4,7 +4,7 @@ import { FileSearch } from 'lucide-react'
 import { useXrayStore } from '@/lib/store'
 import { getTerms } from '@/lib/theme/terms'
 import { NARRATIVE_ICONS, narrativeCopy } from '@/lib/narrative-copy'
-import type { CompanyXRay, HiddenStatus, NarrativeKey } from '@/lib/types'
+import type { CompanyXRay, CourtSearchResult, HiddenStatus, NarrativeKey } from '@/lib/types'
 
 const SEV_ORDER = { high: 0, mid: 1, low: 2 } as const
 
@@ -13,7 +13,7 @@ function pickEvidence(items: HiddenStatus[]): HiddenStatus | undefined {
 }
 
 /** LITE 叙事卡：图标 + 关键数字 + 一段人话 + 证据入口（规格 §5.1 E）；compact 用于 Hero 右侧竖列 */
-export function NarrativeCard({ id, k, xray, compact }: { id: string; k: NarrativeKey; xray: CompanyXRay; compact?: boolean }) {
+export function NarrativeCard({ id, k, xray, compact, court }: { id: string; k: NarrativeKey; xray: CompanyXRay; compact?: boolean; court?: CourtSearchResult | null }) {
   const setActiveStatus = useXrayStore((s) => s.setActiveStatus)
   const terms = getTerms('lite')
   const model = narrativeCopy(k, xray)
@@ -33,6 +33,7 @@ export function NarrativeCard({ id, k, xray, compact }: { id: string; k: Narrati
           </span>
         </div>
         <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-300">{model.text}</p>
+        {k === 'atk' && <CourtCompact result={court ?? null} />}
         {evidence && (
           <button
             onClick={() => setActiveStatus(evidence)}
@@ -57,6 +58,7 @@ export function NarrativeCard({ id, k, xray, compact }: { id: string; k: Narrati
         <span className="font-mono text-[10px] text-slate-500">{model.caption}</span>
       </div>
       <p className="mt-2 text-[13px] leading-relaxed text-slate-300">{model.text}</p>
+      {k === 'atk' && <CourtCompact result={court ?? null} />}
       {evidence && (
         <button
           onClick={() => setActiveStatus(evidence)}
@@ -68,4 +70,13 @@ export function NarrativeCard({ id, k, xray, compact }: { id: string; k: Narrati
       )}
     </section>
   )
+}
+
+function CourtCompact({ result }: { result: CourtSearchResult | null }) {
+  const message = !result ? '法院公告网：正在检索…' :
+    result.historical && result.records.length === 0 ? '法院公告网：仅有历史快照，当前公告待复核' :
+    result.status === 'available' || result.status === 'partial' ? `法院公告网：近 12 个月匹配 ${result.records.length} 条公告${result.historical ? '（历史抓取，部分结果）' : result.status === 'partial' ? '（部分结果）' : ''}` :
+    result.status === 'empty' ? '法院公告网：近 12 个月未匹配到公告' :
+    result.status === 'identity_unverified' ? '法院公告网：公司全称待核实' : '法院公告网：暂无法读取'
+  return <p className="mt-2 border-t border-edge/50 pt-2 text-[11px] text-slate-400">{message}；公告不等于案件数。</p>
 }

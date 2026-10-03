@@ -61,7 +61,7 @@ export function narrativeCopy(key: NarrativeKey, x: CompanyXRay): NarrativeCopy 
       if (x.atk.available === false) {
         return {
           big: '暂无法判断',
-          caption: '司法数据暂未接入',
+          caption: '诉讼执行待核验',
           text: '当前无法核验诉讼、被执行与失信记录，不能据此推断公司不存在司法风险。',
         }
       }

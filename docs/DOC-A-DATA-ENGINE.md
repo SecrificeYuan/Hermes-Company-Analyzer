@@ -40,6 +40,30 @@ are backfilled independently until one year of history, source exhaustion, or
 the configured safety cap. A failed news page never blocks or replaces the
 already-rendered report.
 
+## Court announcement lookup
+
+`GET /api/company/<id>/court` runs separately after the report renders. For listed
+companies it uses the verified full name in the Eastmoney F10 profile; for other
+companies it uses a verified `CompanyIdentity.fullName`. Without that legal name,
+the result is `identity_unverified` and no court request is made. The adapter
+follows the list/detail POST pattern documented by
+[court_project](https://github.com/junsonchen/court_project), searching the fixed
+`rmfygg.court.gov.cn` host by full company name. It checks robots rules, rejects
+redirects and access restrictions, limits responses and request time, reads at
+most six pages (90 list rows) and 24 details, and paces detail requests. Successful
+searches are saved as versioned JSON under the Git-ignored `.data/court-announcements/`
+directory and reused for five minutes. If the source is blocked or unavailable,
+a snapshot less than seven days old may be shown as historical, partial data after
+filtering its records to the current date window. The response retains its original
+fetch time and never presents an old empty result as a current no-match result. It
+filters by announcement publication date within the last twelve calendar months
+and returns only detail records containing the searched legal name. A cap or
+detail failure yields `partial`, not a complete or empty result.
+
+The `CourtSearchResult` contract in `lib/types.ts` is independent of
+`RawCompanyData.legal`. These are name-matched public notices, not verified
+lawsuit, execution, or dishonesty counts. They do not enter ATK or overall risk.
+
 ## Verify
 
 ```bash

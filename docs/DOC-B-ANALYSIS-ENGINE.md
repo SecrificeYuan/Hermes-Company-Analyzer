@@ -80,6 +80,7 @@ overallRisk: <35 green | 35-65 yellow | ≥65 red
 3. **trend 数组**：`hp.trend` = 各年经营现金流（万元，可能为负，前端据此变红）；`morale.trend` = 月均 tone（-10~10）；`labels` 为 v1.1 可选增量字段；
 4. **时间轴去噪**：舆情只收录 `|tone|>=4` 的显著转折点；
 5. 时间轴统一**倒序**（最新在前）。
+6. 人民法院公告网查询是独立的 `CourtSearchResult` 展示切片。名称匹配公告不得映射为 `RawCompanyData.legal` 的诉讼、执行或失信字段，也不进入 ATK、时间轴、debuff 或综合风险分。
 
 ## 5. 验收标准（联调关卡）
 

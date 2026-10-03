@@ -81,7 +81,7 @@ export function CharacterPanel({ xray, health }: { xray: CompanyXRay; health?: C
         <div className="mt-5 space-y-3">
           {health.years.length || health.metrics.operatingCashFlow !== null ? <HealthBar hp={xray.hp} /> : <MissingBlock label="财务" />}
           {health.metrics.pledgeRatio !== null ? <DimRow label={terms.defLabel} score={xray.def.score} sub={`质押 ${health.metrics.pledgeRatio}%`} /> : <MissingBlock label="质押" />}
-          {health.metrics.lawsuitAnnouncements !== null ? <DimRow label={terms.atkLabel} score={xray.atk.score} sub={`官司 ${health.metrics.lawsuitAnnouncements} 起（公告线索）`} /> : <MissingBlock label="司法" />}
+          {health.metrics.lawsuitAnnouncements !== null ? <DimRow label={terms.atkLabel} score={xray.atk.score} sub={`公司披露：诉讼/仲裁公告 ${health.metrics.lawsuitAnnouncements} 条`} unavailable /> : <MissingBlock label="司法" />}
           <MissingBlock label="口碑" />
           {health.gaps.length > 0 && (
             <p className="text-xs text-warn">还缺：{health.gaps.join('；')}</p>
