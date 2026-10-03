@@ -89,14 +89,16 @@ export function ChatWindow({
           for (let i = next.length - 1; i >= 0; i--) {
             if (next[i].role === 'assistant') {
               next[i] = { role: 'assistant', text: aiText }
-              break
+              return next
             }
           }
-          return next
+          // 工具进度行之后首个 delta：空气泡已被移除，需新建
+          return [...next, { role: 'assistant', text: aiText }]
         })
       }
 
-      const finishAi = () => {
+      /** mode='remove'：工具进度行前移除等待气泡；mode='fallback'：流结束兜底，空白则显示错误文案 */
+      const finishAi = (mode: 'remove' | 'fallback') => {
         if (!aiMsgActive) return
         aiMsgActive = false
         setMsgs((prev) => {
@@ -104,10 +106,14 @@ export function ChatWindow({
           for (let i = next.length - 1; i >= 0; i--) {
             const item = next[i] as Extract<UiMsg, { role: 'assistant' }>
             if (item.role === 'assistant') {
-              if (item.text === '') next.splice(i, 1)
-              break
+              if (item.text === '') {
+                if (mode === 'remove') next.splice(i, 1)
+                else next[i] = { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }
+              }
+              return next
             }
           }
+          if (mode === 'fallback') return [...next, { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }]
           return next
         })
       }
@@ -130,7 +136,7 @@ export function ChatWindow({
           if (ev.type === 'delta' && ev.text) {
             appendToAi(ev.text)
           } else if (ev.type === 'tool_start') {
-            finishAi()
+            finishAi('remove')
             setMsgs((prev) => [...prev, { role: 'tool', label: ev.label ?? ev.name ?? '检索工具' }])
           } else if (ev.type === 'report_card' && ev.reportCard) {
             setMsgs((prev) => [...prev, { role: 'card', card: ev.reportCard as ReportCardData }])
@@ -139,7 +145,7 @@ export function ChatWindow({
           }
         }
       }
-      finishAi()
+      finishAi('fallback')
     } catch {
       fail('网络异常，请稍后重试。')
     } finally {
@@ -167,7 +173,13 @@ export function ChatWindow({
           ) : m.role === 'assistant' ? (
             <div key={i} className="flex justify-start">
               <div className="glass-card max-w-[85%] whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed text-slate-100">
-                {m.text || '思考中…'}
+                {m.text || (
+                  <span className="inline-flex items-center gap-1.5 py-1 text-slate-400" aria-label="正在思考">
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                  </span>
+                )}
               </div>
             </div>
           ) : m.role === 'tool' ? (
