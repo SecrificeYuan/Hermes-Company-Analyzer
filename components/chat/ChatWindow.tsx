@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Building2, Copy, FileSearch, HeartPulse, Pencil, ScanLine, Search, Send, ShieldCheck, Trash2, Wrench, type LucideIcon } from 'lucide-react'
+import { Building2, ChevronDown, Copy, FileSearch, HeartPulse, Pencil, ScanLine, Search, Send, ShieldCheck, Trash2, Wrench, type LucideIcon } from 'lucide-react'
 import { addChatThread, type ChatAttachment, type ChatMessage, type ChatThread } from '@/lib/chat-history'
 import { ReportCard, type ReportCardData } from '@/components/chat/ReportCard'
-import { AttachmentPicker } from '@/components/chat/AttachmentPicker'
+import { AttachmentChips, AttachmentPicker } from '@/components/chat/AttachmentPicker'
 import { Markdown } from '@/components/chat/Markdown'
 
 type UiMsg =
@@ -33,6 +33,67 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   get_news: Search,
   compare_companies: Search,
   get_announcements: Search,
+}
+
+/** 单个工具进度药丸 */
+function ToolPill({ label, name, done, active }: { label: string; name?: string; done?: boolean; active?: boolean }) {
+  const Icon = (name && TOOL_ICONS[name]) || Wrench
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors ${
+        done ? 'border-ink-edge/40 bg-ink-card/20' : 'border-ink-edge/60 bg-ink-card/40'
+      }`}
+    >
+      <Icon className={`h-3.5 w-3.5 ${done ? 'text-slate-600' : 'animate-pulse text-neon'}`} />
+      <span className={`font-mono text-[11px] tracking-wide ${done ? 'text-slate-600' : 'text-slate-400'}`}>{label}</span>
+      {active && <span className="thinking-dot" />}
+    </span>
+  )
+}
+
+/** 连续工具调用折叠：进行中的只显示最新一个；全部完成后收成「N 个工具」可展开列表 */
+function ToolCluster({ items }: { items: Extract<UiMsg, { role: 'tool' }>[] }) {
+  const [expanded, setExpanded] = useState(false)
+  const running = items.some((t) => !t.done)
+  if (running) {
+    const last = items[items.length - 1]
+    return (
+      <div className="flex flex-col items-start gap-1.5">
+        {items.length > 1 && (
+          <span className="pl-1 font-mono text-[10px] text-slate-600">已调用 {items.length - 1} 个工具</span>
+        )}
+        <ToolPill label={last.label} name={last.name} done={last.done} active />
+      </div>
+    )
+  }
+  if (!expanded) {
+    return (
+      <div className="flex justify-start">
+        <button
+          onClick={() => setExpanded(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-ink-edge/40 bg-ink-card/20 px-3.5 py-1.5 font-mono text-[11px] tracking-wide text-slate-600 transition-colors hover:border-ink-edge/70 hover:text-slate-400"
+        >
+          <Wrench className="h-3.5 w-3.5" />
+          已调用 {items.length} 个工具
+          <ChevronDown className="h-3 w-3" />
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-col items-start gap-1.5">
+      <button
+        onClick={() => setExpanded(false)}
+        className="inline-flex items-center gap-1.5 pl-1 font-mono text-[10px] text-slate-600 transition-colors hover:text-slate-400"
+      >
+        <ChevronDown className="h-3 w-3 rotate-180" />
+        收起
+      </button>
+      {items.map((t, j) => (
+        <ToolPill key={j} label={t.label} name={t.name} done />
+      ))}
+    </div>
+  )
 }
 
 export function ChatWindow({
@@ -352,11 +413,38 @@ export function ChatWindow({
     return out
   }
 
+  // 把连续的工具行合并成簇渲染，避免多轮工具调用把页面撑得很长
+  type Row = { kind: 'msg'; m: UiMsg; i: number } | { kind: 'tools'; items: Extract<UiMsg, { role: 'tool' }>[] }
+  const rows: Row[] = []
+  msgs.forEach((m, i) => {
+    if (m.role === 'tool') {
+      const last = rows[rows.length - 1]
+      if (last?.kind === 'tools') last.items.push(m)
+      else rows.push({ kind: 'tools', items: [m] })
+    } else {
+      rows.push({ kind: 'msg', m, i })
+    }
+  })
+
   return (
     <>
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
-        {msgs.map((m, i) =>
-          m.role === 'user' ? (
+        {rows.map((row, ri) =>
+          row.kind === 'tools' ? (
+            <ToolCluster key={ri} items={row.items} />
+          ) : (
+            (() => {
+              const m = row.m
+              const i = row.i
+              if (m.role === 'card') {
+                return (
+                  <div key={i} className="flex justify-start">
+                    <ReportCard card={m.card} />
+                  </div>
+                )
+              }
+              if (m.role !== 'user' && m.role !== 'assistant') return null
+              return m.role === 'user' ? (
             <div key={i} className="group flex justify-end">
               <div className="max-w-[80%]">
                 {m.attachments && m.attachments.length > 0 && (
@@ -397,7 +485,7 @@ export function ChatWindow({
                 </div>
               </div>
             </div>
-          ) : m.role === 'assistant' ? (
+          ) : (
             <div key={i} className="group flex justify-start">
               <div className="max-w-[85%]">
                 <div className="glass-card max-w-[85%] px-4 py-2.5">
@@ -430,28 +518,8 @@ export function ChatWindow({
                 )}
               </div>
             </div>
-          ) : m.role === 'tool' ? (
-            (() => {
-              const Icon = (m.name && TOOL_ICONS[m.name]) || Wrench
-              return (
-                <div key={i} className="flex justify-start">
-                  <span
-                    className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors ${
-                      m.done ? 'border-ink-edge/40 bg-ink-card/20' : 'border-ink-edge/60 bg-ink-card/40'
-                    }`}
-                  >
-                    <Icon className={`h-3.5 w-3.5 ${m.done ? 'text-slate-600' : 'animate-pulse text-neon'}`} />
-                    <span className={`font-mono text-[11px] tracking-wide ${m.done ? 'text-slate-600' : 'text-slate-400'}`}>
-                      {m.label}
-                    </span>
-                  </span>
-                </div>
-              )
+          )
             })()
-          ) : (
-            <div key={i} className="flex justify-start">
-              <ReportCard card={m.card} />
-            </div>
           )
         )}
       </div>
@@ -465,13 +533,14 @@ export function ChatWindow({
       >
         <div className="glass-card mx-auto flex w-full max-w-2xl items-center gap-3 px-5 py-3.5">
           <AttachmentPicker selected={pendingAttachments} onChange={setPendingAttachments} />
+          <AttachmentChips selected={pendingAttachments} onChange={setPendingAttachments} />
           <input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={busy}
             placeholder="继续追问，例如：那这家和 XX 比呢？"
-            className="w-full bg-transparent font-mono text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none disabled:opacity-50"
+            className="min-w-0 flex-1 bg-transparent font-mono text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none disabled:opacity-50"
           />
           <button
             type="submit"

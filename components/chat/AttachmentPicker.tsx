@@ -73,7 +73,7 @@ export function AttachmentPicker({
         type="button"
         title="附加公司资料"
         onClick={() => setOpen((v) => !v)}
-        className={`flex h-9 w-9 items-center justify-center rounded-btn border transition-colors ${
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-btn border transition-colors ${
           open || selected.length
             ? 'border-neon/60 text-neon'
             : 'border-ink-edge text-slate-400 hover:border-neon/40 hover:text-neon'
@@ -119,23 +119,41 @@ export function AttachmentPicker({
           </div>
         </div>
       )}
+    </div>
+  )
+}
 
-      {selected.length > 0 && (
-        <div className="absolute bottom-12 right-0 flex flex-wrap justify-end gap-1.5">
-          {selected.map((a) => (
-            <span
-              key={`${a.type}:${a.id}`}
-              className="flex items-center gap-1.5 rounded-full border border-neon/40 bg-ink-card py-1 pl-2.5 pr-1.5 text-xs text-slate-200"
-            >
-              {a.type === 'report' ? <FileSearch className="h-3 w-3 text-neon" /> : <Building2 className="h-3 w-3 text-neon" />}
-              {a.name}
-              <button type="button" onClick={() => remove(a.id)} className="text-slate-500 hover:text-slate-200" aria-label="移除附件">
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+/** 待发送附件的内联 chip（渲染在输入框内，回形针旁） */
+export function AttachmentChips({
+  selected,
+  onChange,
+}: {
+  selected: ChatAttachment[]
+  onChange: (next: ChatAttachment[]) => void
+}) {
+  if (!selected.length) return null
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      {selected.map((a) => (
+        <span
+          key={`${a.type}:${a.id}`}
+          className="flex min-w-0 shrink items-center gap-1.5 rounded-md border border-neon/40 bg-ink-card/60 py-1 pl-2 pr-1 text-xs text-slate-200"
+        >
+          {a.type === 'report' ? <FileSearch className="h-3 w-3 shrink-0 text-neon" /> : <Building2 className="h-3 w-3 shrink-0 text-neon" />}
+          <span className="max-w-[7rem] truncate">{a.name}</span>
+          <span className="shrink-0 rounded bg-ink-edge/50 px-1 font-mono text-[10px] text-slate-400">
+            {a.type === 'report' ? '报告' : '公司'}
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange(selected.filter((x) => x.id !== a.id))}
+            className="shrink-0 text-slate-500 hover:text-slate-200"
+            aria-label="移除附件"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
     </div>
   )
 }
