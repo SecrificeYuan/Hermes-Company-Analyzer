@@ -100,11 +100,14 @@ export function ChatWindow({
   thread,
   onThreadUpdate,
   reportId,
+  initialAttachments,
 }: {
   thread: ChatThread
   onThreadUpdate: (t: ChatThread) => void
   /** 报告页「追问 AI」入口：把该报告 id 透传给 /api/chat，服务端注入全量事实快照 */
   reportId?: string | null
+  /** 一次性预置附件：仅挂载时填入输入区待发送列表，不代发消息 */
+  initialAttachments?: ChatAttachment[]
 }) {
   const [msgs, setMsgs] = useState<UiMsg[]>(() =>
     thread.messages
@@ -131,7 +134,7 @@ export function ChatWindow({
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const [confirmIdx, setConfirmIdx] = useState<number | null>(null)
   /** 输入区待发送的附件（点回形针搜索添加，随下一条 user 消息发出并持久化） */
-  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([])
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>(() => initialAttachments ?? [])
   /** msgs 的命令式镜像：回合结束 finally 里 state 尚未重渲染，必须靠它拿到含 tool/card 的完整序列再落库 */
   const msgsRef = useRef<UiMsg[]>(msgs)
   const updateMsgs = (fn: (prev: UiMsg[]) => UiMsg[]) => {
@@ -323,6 +326,10 @@ export function ChatWindow({
               }
               return next
             })
+            // 新气泡是独立的 assistant 发言：aiText 是回合级累加器，必须清零，
+            // 否则工具调用后的流式 delta 会把之前气泡里的文字重复进新气泡（「变成两条消息」bug）
+            // （finishAi 已把 pendingAiRef 置 -1，这里必定新开占位气泡）
+            aiText = ''
           } else if (ev.type === 'tool_end') {
             // 标记最近一条未完成的工具行：停动画、变静态（占位气泡由 tool_start 续上，此处不动）
             updateMsgs((prev) => {
@@ -350,6 +357,8 @@ export function ChatWindow({
               next.push({ role: 'assistant', text: '' })
               return next
             })
+            // 卡片后的口播是新气泡：清零回合级累加器，防止把工具调用前的文字重复进来
+            aiText = ''
           } else if (ev.type === 'error') {
             appendToAi(ev.message ?? '出错了')
           }
@@ -437,15 +446,16 @@ export function ChatWindow({
               const m = row.m
               const i = row.i
               if (m.role === 'card') {
+                // key 必须与外层 rows.map 的 ri 同命名空间：i 是 msgs 下标，工具合并后两套编号会撞号（duplicate key bug）
                 return (
-                  <div key={i} className="flex justify-start">
+                  <div key={ri} className="flex justify-start">
                     <ReportCard card={m.card} />
                   </div>
                 )
               }
               if (m.role !== 'user' && m.role !== 'assistant') return null
               return m.role === 'user' ? (
-            <div key={i} className="group flex justify-end">
+                <div key={ri} className="group flex justify-end">
               <div className="max-w-[80%]">
                 {m.attachments && m.attachments.length > 0 && (
                   <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
@@ -486,7 +496,7 @@ export function ChatWindow({
               </div>
             </div>
           ) : (
-            <div key={i} className="group flex justify-start">
+            <div key={ri} className="group flex justify-start">
               <div className="max-w-[85%]">
                 <div className="glass-card max-w-[85%] px-4 py-2.5">
                   {m.text ? (

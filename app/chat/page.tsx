@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, MessageSquare, PenSquare, Trash2 } from 'lucide-react'
-import { deleteChatThread, hydrateChatThreads, addChatThread, type ChatThread } from '@/lib/chat-history'
+import { deleteChatThread, hydrateChatThreads, addChatThread, type ChatAttachment, type ChatThread } from '@/lib/chat-history'
 import { ChatWindow } from '@/components/chat/ChatWindow'
 
 function formatAt(at: number): string {
@@ -27,6 +27,8 @@ function ChatPageInner() {
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [checked, setChecked] = useState(false)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  /** 报告页带附件进入时的一次性预置附件，ChatWindow 挂载消费后即清空，避免切线程时串台 */
+  const [bootAttach, setBootAttach] = useState<ChatAttachment[]>([])
   const companyBooted = useRef(false)
   const reportBooted = useRef(false)
 
@@ -84,8 +86,8 @@ function ChatPageInner() {
   }, [company, threadId, router])
 
   useEffect(() => {
-    // 报告页「与 AI 聊聊」入口：/chat?report=<id> → 自动开新线程，首条消息附报告快照附件，
-    // ChatWindow 会把附件随请求带给 /api/chat，服务端展开注入（AI 无需再调工具拉取）
+    // 报告页「与 AI 聊聊」入口：/chat?report=<id> → 自动开一条空线程，报告快照作为预置附件
+    // 只选中在输入框、不代发消息；用户确认后随首条消息发出（ChatWindow 一次性消费 initialAttachments）
     if (!reportId || threadId) return
     if (reportBooted.current) return
     reportBooted.current = true
@@ -93,15 +95,12 @@ function ChatPageInner() {
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `t-${Date.now()}`,
       title: '报告追问',
       at: Date.now(),
-      messages: [{
-        role: 'user',
-        content: `我附着了「${reportName ?? '这家公司'}」的 X 光报告，想跟你聊聊它的情况。`,
-        attachments: [{ type: 'report', id: reportId, name: reportName ?? 'X 光报告', addedAt: Date.now() }],
-      }],
+      messages: [],
     }
     addChatThread(fresh)
+    setBootAttach([{ type: 'report', id: reportId, name: reportName ?? 'X 光报告', addedAt: Date.now() }])
     router.replace(`/chat?thread=${fresh.id}&report=${encodeURIComponent(reportId)}`)
-  }, [reportId, threadId, router])
+  }, [reportId, reportName, threadId, router])
 
   /** 新建对话：开一条空消息线程并切入；首条消息发送后 ChatWindow 会补标题 */
   function createThread() {
@@ -132,6 +131,12 @@ function ChatPageInner() {
     setConfirmId(id)
     window.setTimeout(() => setConfirmId((v) => (v === id ? null : v)), 3000)
   }
+
+  // 预置附件已被 ChatWindow（key=thread.id）在挂载时消费，这里清空防止后续切线程/重挂载串台
+  useEffect(() => {
+    if (thread && bootAttach.length) setBootAttach([])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread?.id])
 
   if (!checked || !thread) return null
 
@@ -218,6 +223,7 @@ function ChatPageInner() {
             setThreads((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
           }}
           reportId={reportId}
+          initialAttachments={bootAttach.length ? bootAttach : undefined}
         />
       </section>
     </main>

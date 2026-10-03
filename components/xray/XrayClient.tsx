@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, GitCompareArrows } from 'lucide-react'
+import { ArrowLeft, Bot, GitCompareArrows } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AttributeRadar } from './AttributeRadar'
@@ -118,6 +118,9 @@ export function XrayClient({ xray, health }: { xray: CompanyXRay; health?: Compa
             <div className="flex items-center gap-2">
               <Button asChild variant="ghost" size="sm">
                 <Link href={xray.stockCode ? `/compare?a=${xray.stockCode}` : '/compare'}><GitCompareArrows /> 双公司对比</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link href={`/chat?report=${encodeURIComponent(xray.id)}&name=${encodeURIComponent(xray.name)}`}><Bot /> 与 AI 聊一聊</Link>
               </Button>
               {!health && <ShareCard xray={xray} />}
             </div>

@@ -76,7 +76,7 @@ export function ChatEntry({ available }: { available: boolean }) {
       {threads.length > 0 && (
         <div className="mt-6 flex w-full flex-wrap items-center justify-center gap-2">
           <span className="font-mono text-[11px] text-slate-500">最近对话：</span>
-          {threads.map((t) => (
+          {threads.slice(0, 3).map((t) => (
             <button
               key={t.id}
               type="button"
