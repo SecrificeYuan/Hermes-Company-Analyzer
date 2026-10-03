@@ -7,7 +7,7 @@ import { getXRay } from '@/lib/get-xray'
 import { findCompany, getCompanyHealth } from '@/lib/data/company-health'
 import { healthToXray } from '@/lib/data/health-xray'
 
-const SCENARIOS = '买股票/买理财/加盟/入职/合作/买房/留学'
+const SCENARIOS = '买股票/买理财/加盟/报班培训/办卡预付费/供应商预付/其他'
 
 export const toolSpecs: ToolSpec[] = [
   {
@@ -73,10 +73,12 @@ function reportCard(xray: CompanyXRay, scenario?: string) {
     stockCode: xray.stockCode,
     overallRisk: xray.overallRisk,
     riskScore: xray.riskScore,
+    scores: { hp: xray.hp, def: xray.def, risk: xray.riskScore },
     verdict: xray.verdict,
     debuffItems: (xray.hiddenStatus ?? []).map((h) => ({
       id: h.id, label: h.label, severity: h.severity, description: h.description,
     })),
+    nextSteps: xray.nextSteps ?? null,
     asOf: xray.asOf,
     scenario: scenario ?? null,
   }
