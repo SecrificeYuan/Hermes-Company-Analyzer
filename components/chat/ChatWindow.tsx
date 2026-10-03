@@ -50,6 +50,8 @@ export function ChatWindow({
   const confirmTimer = useRef<number | null>(null)
   /** 本轮流式 AI 气泡在 msgs 中的下标；工具行会移除空气泡，靠它定位而不是从尾部倒搜（否则会改到上一轮的旧气泡） */
   const pendingAiRef = useRef(-1)
+  /** 同步并发锁：state busy 异步生效挡不住同一 tick 内的重复触发，曾导致两条流并写、消息重复 */
+  const busyLockRef = useRef(false)
 
   useEffect(() => {
     const el = scrollRef.current
@@ -107,6 +109,8 @@ export function ChatWindow({
 
   /** 跑一轮 Agent：apiMessages 为送入 /api/chat 的完整消息序列（末条须为 user） */
   const runTurn = async (apiMessages: ChatMessage[]) => {
+    if (busyLockRef.current) return
+    busyLockRef.current = true
     setBusy(true)
     let aiText = ''
 
@@ -221,6 +225,7 @@ export function ChatWindow({
     } catch {
       fail('网络异常，请稍后重试。')
     } finally {
+      busyLockRef.current = false
       setBusy(false)
       const updated: ChatThread = {
         ...thread,
