@@ -6,6 +6,7 @@ import { toolSpecs, executeTool } from './tools'
 export type AgentEvent =
   | { type: 'thinking' }
   | { type: 'tool_start'; name: string; label: string }
+  | { type: 'tool_end'; name: string }
   | { type: 'delta'; text: string }
   | { type: 'report_card'; reportCard: Record<string, unknown> }
 
@@ -84,6 +85,7 @@ export async function runAgent(history: ChatMessage[], onEvent: (e: AgentEvent) 
           onEvent({ type: 'report_card', reportCard: output.reportCard as Record<string, unknown> })
         }
         messages.push({ role: 'tool', content: JSON.stringify(output), tool_call_id: call.id })
+        onEvent({ type: 'tool_end', name: call.name })
       }
       continue
     }

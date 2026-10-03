@@ -46,6 +46,19 @@ describe('lib/chat/agent', () => {
     expect(chatOnce).toHaveBeenCalledTimes(3)
   })
 
+  it('每个工具执行完发出 tool_end 事件（成对出现，供前端停动画）', async () => {
+    vi.mocked(chatOnce)
+      .mockResolvedValueOnce({ content: null, toolCalls: [{ id: 'c1', name: 'suggest_companies', arguments: {} }], finishReason: 'tool_calls' })
+      .mockResolvedValueOnce({ content: null, toolCalls: null, finishReason: 'stop' })
+    vi.mocked(executeTool).mockResolvedValueOnce({ suggestions: [] })
+    vi.mocked(chatStream).mockImplementation(async function* () { yield { type: 'done' } })
+    const events: { type: string; name?: string }[] = []
+    await runAgent(USER, (e) => events.push(e))
+    const starts = events.filter((e) => e.type === 'tool_start')
+    const ends = events.filter((e) => e.type === 'tool_end')
+    expect(ends.map((e) => e.name)).toEqual(starts.map((e) => e.name))
+  })
+
   it('工具返回 {error} 时回灌模型，不中断循环', async () => {
     vi.mocked(chatOnce)
       .mockResolvedValueOnce({ content: null, toolCalls: [{ id: 'c1', name: 'run_xray', arguments: { company_id: 'x' } }], finishReason: 'tool_calls' })

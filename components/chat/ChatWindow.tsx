@@ -9,7 +9,7 @@ import { Markdown } from '@/components/chat/Markdown'
 type UiMsg =
   | { role: 'user'; text: string }
   | { role: 'assistant'; text: string }
-  | { role: 'tool'; label: string; name?: string }
+  | { role: 'tool'; label: string; name?: string; done?: boolean }
   | { role: 'card'; card: ReportCardData }
 
 interface SseEvent {
@@ -48,6 +48,8 @@ export function ChatWindow({
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const confirmTimer = useRef<number | null>(null)
+  /** 本轮流式 AI 气泡在 msgs 中的下标；工具行会移除空气泡，靠它定位而不是从尾部倒搜（否则会改到上一轮的旧气泡） */
+  const pendingAiRef = useRef(-1)
 
   useEffect(() => {
     const el = scrollRef.current
@@ -132,45 +134,45 @@ export function ChatWindow({
       }
 
       // 预置一个等待中的 AI 气泡
-      setMsgs((prev) => [...prev, { role: 'assistant', text: '' }])
+      setMsgs((prev) => {
+        pendingAiRef.current = prev.length
+        return [...prev, { role: 'assistant', text: '' }]
+      })
 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buf = ''
-      let aiMsgActive = true
 
       const appendToAi = (delta: string) => {
         aiText += delta
         setMsgs((prev) => {
-          const next = [...prev]
-          for (let i = next.length - 1; i >= 0; i--) {
-            if (next[i].role === 'assistant') {
-              next[i] = { role: 'assistant', text: aiText }
-              return next
-            }
+          const idx = pendingAiRef.current
+          if (idx >= 0 && idx < prev.length && prev[idx].role === 'assistant') {
+            const next = [...prev]
+            next[idx] = { role: 'assistant', text: aiText }
+            return next
           }
-          // 工具进度行之后首个 delta：空气泡已被移除，需新建
-          return [...next, { role: 'assistant', text: aiText }]
+          // 工具进度行之后首个 delta：空气泡已被移除，在末尾新建
+          pendingAiRef.current = prev.length
+          return [...prev, { role: 'assistant', text: aiText }]
         })
       }
 
       /** mode='remove'：工具进度行前移除等待气泡；mode='fallback'：流结束兜底，空白则显示错误文案 */
       const finishAi = (mode: 'remove' | 'fallback') => {
-        if (!aiMsgActive) return
-        aiMsgActive = false
+        const idx = pendingAiRef.current
+        pendingAiRef.current = -1
+        if (idx < 0) return
         setMsgs((prev) => {
-          const next = [...prev]
-          for (let i = next.length - 1; i >= 0; i--) {
-            const item = next[i] as Extract<UiMsg, { role: 'assistant' }>
-            if (item.role === 'assistant') {
-              if (item.text === '') {
-                if (mode === 'remove') next.splice(i, 1)
-                else next[i] = { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }
-              }
-              return next
-            }
+          if (idx >= prev.length || prev[idx].role !== 'assistant') {
+            if (mode === 'fallback') return [...prev, { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }]
+            return prev
           }
-          if (mode === 'fallback') return [...next, { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }]
+          const next = [...prev]
+          if (next[idx].role === 'assistant' && next[idx].text === '') {
+            if (mode === 'remove') next.splice(idx, 1)
+            else next[idx] = { role: 'assistant', text: '服务暂时无响应，请稍后重试。' }
+          }
           return next
         })
       }
@@ -195,6 +197,19 @@ export function ChatWindow({
           } else if (ev.type === 'tool_start') {
             finishAi('remove')
             setMsgs((prev) => [...prev, { role: 'tool', label: ev.label ?? ev.name ?? '检索工具', name: ev.name }])
+          } else if (ev.type === 'tool_end') {
+            // 标记最近一条未完成的工具行：停动画、变静态
+            setMsgs((prev) => {
+              for (let i = prev.length - 1; i >= 0; i--) {
+                const item = prev[i]
+                if (item.role === 'tool' && !item.done) {
+                  const next = [...prev]
+                  next[i] = { ...item, done: true }
+                  return next
+                }
+              }
+              return prev
+            })
           } else if (ev.type === 'report_card' && ev.reportCard) {
             setMsgs((prev) => [...prev, { role: 'card', card: ev.reportCard as ReportCardData }])
           } else if (ev.type === 'error') {
@@ -306,9 +321,15 @@ export function ChatWindow({
               const Icon = (m.name && TOOL_ICONS[m.name]) || Wrench
               return (
                 <div key={i} className="flex justify-start">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-ink-edge/60 bg-ink-card/40 px-3.5 py-1.5">
-                    <Icon className="h-3.5 w-3.5 animate-pulse text-neon" />
-                    <span className="font-mono text-[11px] tracking-wide text-slate-400">{m.label}</span>
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors ${
+                      m.done ? 'border-ink-edge/40 bg-ink-card/20' : 'border-ink-edge/60 bg-ink-card/40'
+                    }`}
+                  >
+                    <Icon className={`h-3.5 w-3.5 ${m.done ? 'text-slate-600' : 'animate-pulse text-neon'}`} />
+                    <span className={`font-mono text-[11px] tracking-wide ${m.done ? 'text-slate-600' : 'text-slate-400'}`}>
+                      {m.label}
+                    </span>
                   </span>
                 </div>
               )
