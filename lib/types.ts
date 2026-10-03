@@ -179,6 +179,8 @@ export type Severity = 'low' | 'mid' | 'high'
 export interface DimensionScore {
   score: number // 0-100
   label: string // 游戏化评语，如 "重度失血"
+  /** false 时数值仅为兼容占位，不能展示成已知指标或用于比较。 */
+  available?: boolean
 }
 
 export interface HiddenStatus {
@@ -225,7 +227,7 @@ export interface CompanyXRay {
   riskScore: number // 0-100，越高越危险
 
   hp: DimensionScore & { cashFlow: number; debtRatio: number; trend: number[]; labels?: string[] } // trend = 各年经营现金流（万元）升序；labels = 对应年份（v1.1 增量，可选）
-  def: DimensionScore & { pledgeRatio: number; assetCoverage: number }
+  def: DimensionScore & { pledgeRatio: number; assetCoverage: number; pledgeAvailable?: boolean }
   atk: DimensionScore & {
     lawsuitCount: number
     executionAmount: number

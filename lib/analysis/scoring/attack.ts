@@ -15,8 +15,9 @@ export function scoreAttack(legal: RawCompanyData['legal']): CompanyXRay['atk'] 
   const executionAmount = (legal?.executions ?? []).reduce((sum, e) => sum + e.amount, 0)
 
   const score = Math.round(clamp(lawsuitCount * 5 + Math.log10(1 + executionAmount) * 10))
+  const noRecords = lawsuitCount === 0 && legal.executions.length === 0 && legal.dishonest === 0
   const label =
-    score >= 70 ? '战火缠身' : score >= 40 ? '纠纷不断' : score >= 15 ? '偶有摩擦' : '与世无争'
+    score >= 70 ? '司法风险信号较多' : score >= 40 ? '司法记录需关注' : score >= 15 ? '有司法记录' : noRecords ? '本次未发现记录' : '有司法记录'
 
   return { score, label, lawsuitCount, executionAmount, available: true }
 }

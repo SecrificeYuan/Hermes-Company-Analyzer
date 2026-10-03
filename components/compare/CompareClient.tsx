@@ -19,7 +19,7 @@ import { LiteLoading } from './LiteLoading'
 import { MetricCompareTable } from './MetricCompareTable'
 import { RiskCompare } from './RiskCompare'
 import { TrendCompare } from './TrendCompare'
-import { compareVerdict } from '@/lib/analysis/compare-verdict'
+import { compareCompanyVerdict } from '@/lib/analysis/compare-verdict'
 import type { CompareSelection } from '@/lib/compare-params'
 import type { ListedCompany } from '@/lib/data/eastmoney'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
@@ -186,7 +186,7 @@ function LiteArena({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
   const t = useTokens()
   const terms = getTerms('lite').compare
   const titles = getTerms('lite').cardTitles
-  const outcome = compareVerdict(a.riskScore, b.riskScore)
+  const outcome = compareCompanyVerdict(a, b)
 
   return (
     <div className="mt-6">
@@ -208,7 +208,7 @@ function LiteArena({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
           className="flex items-center justify-center"
         >
           <div className="rounded-full border border-neon/40 bg-ink-card px-5 py-3 text-center font-mono text-sm tracking-[0.3em] text-neon shadow-glow">
-            VS
+            {outcome === null || outcome === 'draw' ? 'VS' : 'K.O.'}
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.16 }}>

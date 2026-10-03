@@ -36,9 +36,10 @@ describe('narrativeCopy', () => {
     }
   })
 
-  it('llm.sectionNotes 覆盖模板文案（danger 的 def 卡）', () => {
+  it('AI 自由文案不能覆盖按数据程度生成的说明', () => {
     const x = analyze(raw(dangerJson))
-    expect(narrativeCopy('def', x).text).toContain('押到极限')
+    expect(narrativeCopy('def', x).text).toContain('比例较高')
+    expect(narrativeCopy('def', x).text).not.toContain('押到极限')
   })
 
   it('无 llm 时回落模板（healthy）', () => {

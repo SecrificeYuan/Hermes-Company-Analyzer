@@ -18,6 +18,10 @@ export function HealthBar({ hp }: { hp: CompanyXRay['hp'] }) {
   const color = scoreColor(t, hp.score)
   const critical = hp.score < 30
 
+  if (hp.available === false) return (
+    <div className="font-mono text-xs text-slate-400">财务资料不足，暂不展示血量、现金流和负债数字。</div>
+  )
+
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between font-mono">

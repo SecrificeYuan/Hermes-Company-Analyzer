@@ -7,6 +7,7 @@ import { baseChartOptionFor } from '@/lib/theme/echarts-themes'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
+import { dimensionAvailability, completeComparisonData } from '@/lib/evidence-availability'
 
 /** 五维口径与单公司版一致；atk 为 lower-better，其余 higher-better（对齐 analyze.ts composite 公式） */
 const HIGHER_BETTER = [true, true, false, true, true]
@@ -23,6 +24,9 @@ export function DualRadar({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
   const val = (x: CompanyXRay) => [x.hp.score, x.def.score, x.atk.score, x.morale.score, 100 - x.riskScore]
   const va = val(a)
   const vb = val(b)
+  const availability = (x: CompanyXRay) => [...dimensionAvailability(x).slice(0, 4), completeComparisonData(x)]
+  const aa = availability(a)
+  const ab = availability(b)
 
   const option: EChartsOption = {
     ...baseChartOptionFor(t),
@@ -34,7 +38,7 @@ export function DualRadar({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
       textStyle: { color: t.colors.textDim, fontSize: 11 },
     },
     radar: {
-      indicator: terms.radarIndicators.map((name) => ({ name, max: 100 })),
+      indicator: terms.radarIndicators.map((name, i) => ({ name: aa[i] && ab[i] ? name : `${name}（资料不足）`, max: 100 })),
       radius: '62%',
       center: ['50%', '44%'],
       axisName: { color: t.colors.textDim, fontSize: 11 },
@@ -47,7 +51,7 @@ export function DualRadar({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
         type: 'radar',
         data: [
           {
-            value: va,
+            value: va.map((value, i) => aa[i] ? value : '-'),
             name: a.name,
             areaStyle: { color: `${t.colors.accent}38` },
             lineStyle: { color: t.colors.accent, width: 2 },
@@ -56,7 +60,7 @@ export function DualRadar({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
             emphasis: { lineStyle: { width: 3.5 } },
           },
           {
-            value: vb,
+            value: vb.map((value, i) => ab[i] ? value : '-'),
             name: b.name,
             areaStyle: { color: `${t.colors.textDim}26` },
             lineStyle: { color: t.colors.textDim, width: 1.5, type: 'dashed' },
@@ -75,7 +79,8 @@ export function DualRadar({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         {terms.radarIndicators.map((name, i) => {
           const d = va[i] - vb[i]
-          const good = d === 0 ? null : HIGHER_BETTER[i] ? d > 0 : d < 0
+          const comparable = aa[i] && ab[i]
+          const good = !comparable || d === 0 ? null : HIGHER_BETTER[i] ? d > 0 : d < 0
           const color = good === null ? t.colors.textFaint : good ? t.colors.safe : t.colors.danger
           return (
             <span
@@ -83,7 +88,7 @@ export function DualRadar({ a, b }: { a: CompanyXRay; b: CompanyXRay }) {
               className="rounded border px-2 py-0.5 font-mono text-[11px]"
               style={{ borderColor: `${color}44`, color }}
             >
-              {name} {d === 0 ? '±0' : `${d > 0 ? '▲' : '▼'}${Math.abs(d)}`}
+              {name} {!comparable ? '无法比较' : d === 0 ? '±0' : `${d > 0 ? '▲' : '▼'}${Math.abs(d)}`}
             </span>
           )
         })}

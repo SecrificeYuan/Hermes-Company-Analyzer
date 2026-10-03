@@ -11,6 +11,7 @@ import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
 import type { CompanyHealth } from '@/lib/company'
 import { listingLabels } from '@/lib/company'
+import { pledgeAvailable } from '@/lib/evidence-availability'
 
 function DimRow({ label, score, sub, unavailable = false }: { label: string; score: number; sub: string; unavailable?: boolean }) {
   const t = useTokens()
@@ -65,9 +66,9 @@ export function CharacterPanel({ xray, health }: { xray: CompanyXRay; health?: C
         <div className="mt-5 space-y-5">
           <HealthBar hp={xray.hp} />
           <div className="space-y-3">
-            <DimRow label={terms.defLabel} score={xray.def.score} sub={`${xray.def.label} · 质押 ${xray.def.pledgeRatio}%`} />
+            <DimRow label={terms.defLabel} score={xray.def.score} sub={xray.def.available === false ? `资料不足 · 质押 ${pledgeAvailable(xray) ? `${xray.def.pledgeRatio}%` : '待核实'}` : `${xray.def.label} · 质押 ${xray.def.pledgeRatio}%`} unavailable={xray.def.available === false} />
             <DimRow label={terms.atkLabel} score={xray.atk.score} sub={xray.atk.available === false ? '司法数据暂未接入' : `${xray.atk.label} · 官司 ${xray.atk.lawsuitCount} 起 / 被执行 ${formatWan(xray.atk.executionAmount)}`} unavailable={xray.atk.available === false} />
-            <DimRow label={terms.moraleLabel} score={xray.morale.score} sub={xray.morale.available === false ? '新闻加载中' : `${xray.morale.label} · 口碑 ${xray.morale.avgTone}`} unavailable={xray.morale.available === false} />
+            <DimRow label={terms.moraleLabel} score={xray.morale.score} sub={xray.morale.available === false ? '舆情资料不足' : `${xray.morale.label} · 口碑 ${xray.morale.avgTone}`} unavailable={xray.morale.available === false} />
           </div>
           <div>
             <div className="mb-1 font-mono text-[10px] tracking-[0.25em] text-slate-500">{terms.cardTitles.radar}</div>

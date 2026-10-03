@@ -17,7 +17,7 @@ export function LegalSection({ xray }: { xray: CompanyXRay }) {
     <div className="space-y-6">
       {available ? (
         <div className="grid gap-4 sm:grid-cols-3">
-          <Metric label="诉讼数量（近 12 月）" value={`${xray.atk.lawsuitCount} 起`} />
+          <Metric label="诉讼数量（已读取资料）" value={`${xray.atk.lawsuitCount} 起`} />
           <Metric label="被执行金额" value={formatWan(xray.atk.executionAmount)} />
           <Metric label="失信被执行" value={dishonest > 0 ? `${dishonest} 次` : '0'} highlight={dishonest > 0} />
         </div>
@@ -38,7 +38,7 @@ export function LegalSection({ xray }: { xray: CompanyXRay }) {
             { key: 'cause', label: '案由', render: (l) => <span className="text-slate-400">{l.cause}</span> },
             { key: 'amount', label: '涉案金额', align: 'right', render: (l) => formatWan(l.amount) },
           ]}
-          empty={available ? '░ 近 12 个月无诉讼记录' : '░ 司法数据暂不可用，无法判断是否存在诉讼记录'}
+          empty={available ? '░ 已读取资料中未发现诉讼记录' : '░ 司法数据暂不可用，无法判断是否存在诉讼记录'}
         />
       </div>
       <div>
@@ -51,7 +51,7 @@ export function LegalSection({ xray }: { xray: CompanyXRay }) {
             { key: 'status', label: '状态', render: (e) => <span className="text-slate-400">{e.status}</span> },
             { key: 'amount', label: '执行标的', align: 'right', render: (e) => formatWan(e.amount) },
           ]}
-          empty={available ? '░ 无被执行记录' : '░ 司法数据暂不可用，无法判断是否存在被执行记录'}
+          empty={available ? '░ 已读取资料中未发现被执行记录' : '░ 司法数据暂不可用，无法判断是否存在被执行记录'}
         />
       </div>
       <div>

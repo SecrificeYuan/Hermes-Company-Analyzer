@@ -1,4 +1,5 @@
 import type { CompanyXRay, NarrativeType } from '@/lib/types'
+import { pledgeAvailable } from '@/lib/evidence-availability'
 
 export type { NarrativeType }
 
@@ -27,8 +28,8 @@ const VALID_TYPES: readonly NarrativeType[] = ['debt', 'pledge', 'lawsuit', 'sen
  */
 function dimDangers(x: CompanyXRay): Record<Exclude<NarrativeType, 'balanced'>, number> {
   return {
-    debt: 100 - x.hp.score,
-    pledge: 100 - x.def.score,
+    debt: x.hp.available === false ? 0 : 100 - x.hp.score,
+    pledge: x.def.available === false ? 0 : 100 - x.def.score,
     lawsuit: x.atk.available === false ? 0 : x.atk.score,
     sentiment: x.morale.available === false ? 0 : Math.max(0, -x.morale.avgTone * 10),
   }
@@ -45,10 +46,12 @@ export function narrativeOf(x: CompanyXRay): NarrativeResult {
   }
   const legalEvents = x.timeline.filter((e) => e.category === 'legal').length
   // 触发器优先：数据异常比分数更抓人；双命中时质押优先（平仓风险时间尺度更短）
-  if (x.def.pledgeRatio >= PLEDGE_TRIGGER) return { type: 'pledge', via: 'trigger-pledge' }
+  if (pledgeAvailable(x) && x.def.pledgeRatio >= PLEDGE_TRIGGER) return { type: 'pledge', via: 'trigger-pledge' }
   if (x.atk.available !== false && legalEvents >= LAWSUIT_TRIGGER) return { type: 'lawsuit', via: 'trigger-lawsuit' }
   // 健康线
   if (
+    x.hp.available !== false &&
+    x.def.available !== false &&
     x.hp.score >= HEALTHY_MIN &&
     x.def.score >= HEALTHY_MIN &&
     x.morale.available !== false &&
@@ -67,7 +70,7 @@ export function narrativeOf(x: CompanyXRay): NarrativeResult {
     ['sentiment', d.sentiment],
   ]
   dangers.sort((a, b) => b[1] - a[1])
-  return { type: dangers[0][0], via: 'argmax' }
+  return { type: dangers[0][1] === 0 ? 'balanced' : dangers[0][0], via: 'argmax' }
 }
 
 // ============================================================

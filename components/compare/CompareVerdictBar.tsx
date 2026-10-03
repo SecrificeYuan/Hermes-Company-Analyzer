@@ -2,7 +2,7 @@
 'use client'
 
 import { Trophy } from 'lucide-react'
-import { compareVerdict } from '@/lib/analysis/compare-verdict'
+import { compareCompanyVerdict } from '@/lib/analysis/compare-verdict'
 import { useMode, useTokens } from '@/lib/theme/use-tokens'
 import { getTerms } from '@/lib/theme/terms'
 import type { CompanyXRay } from '@/lib/types'
@@ -15,8 +15,15 @@ export function CompareVerdictBar({ a, b }: { a: CompanyXRay; b: CompanyXRay }) 
   const t = useTokens()
   const mode = useMode()
   const terms = getTerms(mode).compare
-  const outcome = compareVerdict(a.riskScore, b.riskScore)
+  const outcome = compareCompanyVerdict(a, b)
   const winner = outcome === 'A' ? a : outcome === 'B' ? b : null
+
+  if (outcome === null) return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-ink-edge bg-ink-card px-6 py-4" role="status">
+      <span className="text-base font-semibold" style={{ color: t.colors.textMain }}>资料不完整，暂不判断综合优劣</span>
+      <span className="font-mono text-xs" style={{ color: t.colors.textDim }}>请查看已核实的单项指标；缺失资料不能视为相同或零风险。</span>
+    </div>
+  )
 
   if (mode === 'pro') {
     return (
