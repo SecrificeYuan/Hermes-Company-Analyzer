@@ -56,3 +56,16 @@ export function addChatThread(thread: ChatThread): ChatThread[] {
   }
   return next
 }
+
+/** 删除一条对话；返回更新后的列表 */
+export function deleteChatThread(id: string): ChatThread[] {
+  const next = getChatThreads().filter((t) => t.id !== id)
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      // 写入失败静默降级
+    }
+  }
+  return next
+}

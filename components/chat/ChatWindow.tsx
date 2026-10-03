@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Send } from 'lucide-react'
+import { Copy, Pencil, Send, Trash2 } from 'lucide-react'
 import { addChatThread, type ChatMessage, type ChatThread } from '@/lib/chat-history'
 import { ReportCard, type ReportCardData } from '@/components/chat/ReportCard'
 
@@ -34,12 +34,65 @@ export function ChatWindow({
   )
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
+  const [confirmIdx, setConfirmIdx] = useState<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const confirmTimer = useRef<number | null>(null)
 
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTo({ top: el.scrollHeight })
   }, [msgs])
+
+  /** 把剩余 UI 消息写回 thread 持久化（tool/card 行不落库） */
+  const persistMsgs = (remaining: UiMsg[]) => {
+    const messages: ChatMessage[] = remaining
+      .filter((m): m is Extract<UiMsg, { role: 'user' }> | Extract<UiMsg, { role: 'assistant' }> => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role, content: m.text || null }))
+    const updated: ChatThread = { ...thread, at: Date.now(), messages }
+    addChatThread(updated)
+    onThreadUpdate(updated)
+  }
+
+  const copyText = async (text: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      ta.remove()
+    }
+    setCopiedIdx(idx)
+    window.setTimeout(() => setCopiedIdx((v) => (v === idx ? null : v)), 1500)
+  }
+
+  const deleteMsg = (idx: number) => {
+    if (busy) return
+    const next = msgs.filter((_, j) => j !== idx)
+    persistMsgs(next)
+    setMsgs(next)
+  }
+
+  /** 两步删除：第一次点击进入「确认删除？」，3s 内再点才真正删 */
+  const requestDelete = (idx: number) => {
+    if (confirmIdx === idx) {
+      setConfirmIdx(null)
+      deleteMsg(idx)
+      return
+    }
+    setConfirmIdx(idx)
+    if (confirmTimer.current) window.clearTimeout(confirmTimer.current)
+    confirmTimer.current = window.setTimeout(() => setConfirmIdx((v) => (v === idx ? null : v)), 3000)
+  }
+
+  const editMsg = (text: string) => {
+    setInput(text)
+    inputRef.current?.focus()
+  }
 
   const send = async (text: string) => {
     const q = text.trim()
@@ -165,20 +218,60 @@ export function ChatWindow({
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
         {msgs.map((m, i) =>
           m.role === 'user' ? (
-            <div key={i} className="flex justify-end">
-              <div className="max-w-[80%] rounded-btn bg-neon px-4 py-2.5 text-sm leading-relaxed text-ink-bg">
-                {m.text}
+            <div key={i} className="group flex justify-end">
+              <div className="max-w-[80%]">
+                <div className="rounded-btn bg-neon px-4 py-2.5 text-sm leading-relaxed text-ink-bg">
+                  {m.text}
+                </div>
+                <div className="mt-1 flex items-center justify-end gap-3 font-mono text-[10px] text-slate-500 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                  <button onClick={() => void copyText(m.text, i)} className="flex items-center gap-0.5 hover:text-neon">
+                    <Copy className="h-3 w-3" />
+                    {copiedIdx === i ? '已复制' : '复制'}
+                  </button>
+                  <button onClick={() => editMsg(m.text)} className="flex items-center gap-0.5 hover:text-neon">
+                    <Pencil className="h-3 w-3" />
+                    编辑
+                  </button>
+                  {!busy && (
+                    <button
+                      onClick={() => requestDelete(i)}
+                      className={`flex items-center gap-0.5 ${confirmIdx === i ? 'font-bold text-red-400' : 'hover:text-red-400'}`}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {confirmIdx === i ? '确认删除？' : '删除'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ) : m.role === 'assistant' ? (
-            <div key={i} className="flex justify-start">
-              <div className="glass-card max-w-[85%] whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed text-slate-100">
-                {m.text || (
-                  <span className="inline-flex items-center gap-1.5 py-1 text-slate-400" aria-label="正在思考">
-                    <span className="thinking-dot" />
-                    <span className="thinking-dot" />
-                    <span className="thinking-dot" />
-                  </span>
+            <div key={i} className="group flex justify-start">
+              <div className="max-w-[85%]">
+                <div className="glass-card whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed text-slate-100">
+                  {m.text || (
+                    <span className="inline-flex items-center gap-1.5 py-1 text-slate-400" aria-label="正在思考">
+                      <span className="thinking-dot" />
+                      <span className="thinking-dot" />
+                      <span className="thinking-dot" />
+                    </span>
+                  )}
+                </div>
+                {m.text !== '' && (
+                  <div className="mt-1 flex items-center gap-3 font-mono text-[10px] text-slate-500 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                    <button onClick={() => void copyText(m.text, i)} className="flex items-center gap-0.5 hover:text-neon">
+                      <Copy className="h-3 w-3" />
+                      {copiedIdx === i ? '已复制' : '复制'}
+                    </button>
+                    {!busy && (
+                      <button
+                        onClick={() => requestDelete(i)}
+                        className={`flex items-center gap-0.5 ${confirmIdx === i ? 'font-bold text-red-400' : 'hover:text-red-400'}`}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        {confirmIdx === i ? '确认删除？' : '删除'}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -203,6 +296,7 @@ export function ChatWindow({
       >
         <div className="glass-card mx-auto flex w-full max-w-2xl items-center gap-3 px-5 py-3.5">
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={busy}

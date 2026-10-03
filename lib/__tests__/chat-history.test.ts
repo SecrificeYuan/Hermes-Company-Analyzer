@@ -34,3 +34,21 @@ describe('lib/chat-history', () => {
     expect(getChatThreads()).toHaveLength(1)
   })
 })
+
+describe('deleteChatThread', () => {
+  beforeEach(() => { window.localStorage.clear() })
+
+  it('删除指定对话，其余保留', async () => {
+    const { addChatThread: add, deleteChatThread: del, getChatThreads: get } = await import('@/lib/chat-history')
+    add(thread('a', 1)); add(thread('b', 2)); add(thread('c', 3))
+    const rest = del('b')
+    expect(rest.map((t) => t.id)).toEqual(['c', 'a'])
+    expect(get().map((t) => t.id)).toEqual(['c', 'a'])
+  })
+
+  it('删除不存在的 id 无副作用', async () => {
+    const { addChatThread: add, deleteChatThread: del } = await import('@/lib/chat-history')
+    add(thread('a', 1))
+    expect(del('nope').map((t) => t.id)).toEqual(['a'])
+  })
+})
